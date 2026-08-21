@@ -1,0 +1,13 @@
+[
+  {
+    "matricula": "PS-BZR",
+    "fabricante": "BEECH AIRCRAFT",
+    "modelo": "F33A",
+    "modelo_comercial": "Beechcraft F33A Bonanza",
+    "numero_serie": "CE-1753",
+    "ano_fabricacao": 1993,
+    "tipo_icao": "BE33",
+    "categoria": "UTILIDADE",
+    "situacao": "NORMAL"
+  }
+]
