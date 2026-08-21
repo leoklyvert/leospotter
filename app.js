@@ -1,22 +1,9 @@
 // ==========================================
-// LeoSpotter - V1
+// LeoSpotter
+// Pesquisa de aeronaves
 // ==========================================
 
-// Dados temporários para teste.
-// Posteriormente serão substituídos pela
-// consulta à base RAB/ANAC.
-
-const aeronavesTeste = {
-
-    "PS-BZR": {
-        matricula: "PS-BZR",
-        fabricante: "A definir",
-        modelo: "A consultar na base RAB/ANAC",
-        ano: "—",
-        operador: "A consultar"
-    }
-
-};
+let aeronaves = [];
 
 
 // ==========================================
@@ -37,7 +24,44 @@ const naoEncontrada =
 
 
 // ==========================================
-// PESQUISA
+// CARREGAR BASE DE AERONAVES
+// ==========================================
+
+async function carregarAeronaves() {
+
+    try {
+
+        const resposta = await fetch(
+            "data/aeronaves.json"
+        );
+
+        if (!resposta.ok) {
+            throw new Error(
+                "Não foi possível carregar a base de aeronaves."
+            );
+        }
+
+        aeronaves = await resposta.json();
+
+        console.log(
+            "Base de aeronaves carregada:",
+            aeronaves.length
+        );
+
+    } catch (erro) {
+
+        console.error(
+            "Erro ao carregar aeronaves:",
+            erro
+        );
+
+    }
+
+}
+
+
+// ==========================================
+// PESQUISAR AERONAVE
 // ==========================================
 
 function pesquisarAeronave() {
@@ -47,12 +71,12 @@ function pesquisarAeronave() {
             .trim()
             .toUpperCase();
 
-    // Limpa os resultados anteriores
+    // Esconde resultados anteriores
     resultado.classList.add("hidden");
     naoEncontrada.classList.add("hidden");
 
 
-    // Não pesquisar vazio
+    // Impede pesquisa vazia
     if (!matricula) {
 
         campoMatricula.focus();
@@ -61,9 +85,11 @@ function pesquisarAeronave() {
     }
 
 
-    // Pesquisa nos dados de teste
-    const aeronave =
-        aeronavesTeste[matricula];
+    // Procura a matrícula na base
+    const aeronave = aeronaves.find(
+        item =>
+            item.matricula.toUpperCase() === matricula
+    );
 
 
     if (aeronave) {
@@ -87,35 +113,48 @@ function mostrarAeronave(aeronave) {
 
     document.getElementById(
         "resultadoMatricula"
-    ).textContent = aeronave.matricula;
+    ).textContent =
+        aeronave.matricula;
 
 
     document.getElementById(
         "resultadoModelo"
-    ).textContent = aeronave.modelo;
+    ).textContent =
+        aeronave.modelo_comercial ||
+        aeronave.modelo ||
+        "Modelo não informado";
 
 
     document.getElementById(
         "fabricante"
-    ).textContent = aeronave.fabricante;
+    ).textContent =
+        aeronave.fabricante ||
+        "—";
 
 
     document.getElementById(
         "modelo"
-    ).textContent = aeronave.modelo;
+    ).textContent =
+        aeronave.modelo ||
+        "—";
 
 
     document.getElementById(
         "ano"
-    ).textContent = aeronave.ano;
+    ).textContent =
+        aeronave.ano_fabricacao ||
+        "—";
 
 
     document.getElementById(
         "operador"
-    ).textContent = aeronave.operador;
+    ).textContent =
+        aeronave.categoria ||
+        "—";
 
 
     resultado.classList.remove("hidden");
+
 
     resultado.scrollIntoView({
         behavior: "smooth",
@@ -126,17 +165,19 @@ function mostrarAeronave(aeronave) {
 
 
 // ==========================================
-// NÃO ENCONTRADA
+// AERONAVE NÃO ENCONTRADA
 // ==========================================
 
 function mostrarNaoEncontrada(matricula) {
 
     document.getElementById(
         "matriculaNaoEncontrada"
-    ).textContent = matricula;
+    ).textContent =
+        matricula;
 
 
     naoEncontrada.classList.remove("hidden");
+
 
     naoEncontrada.scrollIntoView({
         behavior: "smooth",
@@ -147,7 +188,7 @@ function mostrarNaoEncontrada(matricula) {
 
 
 // ==========================================
-// EVENTOS
+// BOTÃO PESQUISAR
 // ==========================================
 
 btnPesquisar.addEventListener(
@@ -155,6 +196,10 @@ btnPesquisar.addEventListener(
     pesquisarAeronave
 );
 
+
+// ==========================================
+// TECLA ENTER
+// ==========================================
 
 campoMatricula.addEventListener(
     "keydown",
@@ -171,18 +216,7 @@ campoMatricula.addEventListener(
 
 
 // ==========================================
-// CONTADORES INICIAIS
+// INICIALIZAÇÃO
 // ==========================================
 
-// Por enquanto estão zerados.
-// Posteriormente serão carregados
-// do banco de dados.
-
-document.getElementById(
-    "totalAeronaves"
-).textContent = "0";
-
-
-document.getElementById(
-    "totalFotos"
-).textContent = "0";
+carregarAeronaves();
