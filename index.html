@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="description" content="LeoSpotter - Banco pessoal de aeronaves fotografadas">
+    <meta name="theme-color" content="#0b3d91">
+
+    <title>LeoSpotter</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <header class="topo">
+        <div class="logo-area">
+            <div class="logo-aviao">✈</div>
+
+            <div>
+                <h1>LeoSpotter</h1>
+                <p>Seu banco pessoal de aeronaves</p>
+            </div>
+        </div>
+    </header>
+
+
+    <main class="container">
+
+        <section class="pesquisa-card">
+
+            <h2>Pesquisar aeronave</h2>
+
+            <p class="descricao">
+                Digite a matrícula da aeronave para consultar seus dados.
+            </p>
+
+            <div class="campo-pesquisa">
+
+                <input
+                    type="text"
+                    id="matricula"
+                    placeholder="Ex.: PS-BZR"
+                    maxlength="10"
+                    autocomplete="off"
+                    spellcheck="false"
+                >
+
+                <button id="btnPesquisar">
+                    Pesquisar
+                </button>
+
+            </div>
+
+            <p class="dica">
+                Matrícula de teste: <strong>PS-BZR</strong>
+            </p>
+
+        </section>
+
+
+        <section id="resultado" class="resultado hidden">
+
+            <div class="resultado-header">
+
+                <div>
+                    <span class="etiqueta">AERONAVE ENCONTRADA</span>
+
+                    <h2 id="resultadoMatricula">
+                        PS-BZR
+                    </h2>
+
+                    <p id="resultadoModelo">
+                        Modelo da aeronave
+                    </p>
+                </div>
+
+                <div class="status">
+                    ✓ Encontrada
+                </div>
+
+            </div>
+
+
+            <div class="dados-aeronave">
+
+                <div class="dado">
+                    <span>Fabricante</span>
+                    <strong id="fabricante">—</strong>
+                </div>
+
+                <div class="dado">
+                    <span>Modelo</span>
+                    <strong id="modelo">—</strong>
+                </div>
+
+                <div class="dado">
+                    <span>Ano de fabricação</span>
+                    <strong id="ano">—</strong>
+                </div>
+
+                <div class="dado">
+                    <span>Operador</span>
+                    <strong id="operador">—</strong>
+                </div>
+
+            </div>
+
+
+            <div class="minhas-fotos">
+
+                <div class="secao-titulo">
+
+                    <div>
+                        <span class="etiqueta">MEU ACERVO</span>
+
+                        <h3>Minhas fotografias</h3>
+                    </div>
+
+                    <span class="contador-fotos">
+                        0 fotos
+                    </span>
+
+                </div>
+
+
+                <div class="sem-fotos">
+
+                    <div class="icone-camera">📷</div>
+
+                    <h4>Nenhuma fotografia cadastrada</h4>
+
+                    <p>
+                        Em breve você poderá adicionar suas fotografias
+                        desta aeronave.
+                    </p>
+
+                    <button class="btn-secundario" disabled>
+                        + Adicionar fotografia
+                    </button>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <section id="naoEncontrada" class="nao-encontrada hidden">
+
+            <div class="icone-alerta">🔎</div>
+
+            <h3>Aeronave não encontrada</h3>
+
+            <p>
+                Não encontramos a matrícula
+                <strong id="matriculaNaoEncontrada"></strong>
+                na base de teste.
+            </p>
+
+        </section>
+
+
+        <section class="estatisticas">
+
+            <div class="estatistica">
+
+                <span class="estatistica-icone">✈️</span>
+
+                <div>
+                    <strong id="totalAeronaves">0</strong>
+                    <span>Aeronaves</span>
+                </div>
+
+            </div>
+
+
+            <div class="estatistica">
+
+                <span class="estatistica-icone">📷</span>
+
+                <div>
+                    <strong id="totalFotos">0</strong>
+                    <span>Fotografias</span>
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+
+    <footer>
+
+        <p>
+            LeoSpotter
+            <span>•</span>
+            Projeto em desenvolvimento
+        </p>
+
+    </footer>
+
+
+    <script src="app.js"></script>
+
+</body>
+</html>
