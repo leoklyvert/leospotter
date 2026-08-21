@@ -36,16 +36,19 @@ async function carregarAeronaves() {
         );
 
         if (!resposta.ok) {
+
             throw new Error(
                 "Não foi possível carregar a base de aeronaves."
             );
+
         }
 
         aeronaves = await resposta.json();
 
         console.log(
-            "Base de aeronaves carregada:",
-            aeronaves.length
+            "Base carregada:",
+            aeronaves.length,
+            "aeronave(s)"
         );
 
     } catch (erro) {
@@ -71,24 +74,33 @@ function pesquisarAeronave() {
             .trim()
             .toUpperCase();
 
-    // Esconde resultados anteriores
+
+    // Limpa resultados anteriores
+
     resultado.classList.add("hidden");
+
     naoEncontrada.classList.add("hidden");
 
 
     // Impede pesquisa vazia
+
     if (!matricula) {
 
         campoMatricula.focus();
 
         return;
+
     }
 
 
-    // Procura a matrícula na base
+    // Pesquisa na base JSON
+
     const aeronave = aeronaves.find(
+
         item =>
+            item.matricula &&
             item.matricula.toUpperCase() === matricula
+
     );
 
 
@@ -146,6 +158,9 @@ function mostrarAeronave(aeronave) {
         "—";
 
 
+    // Temporariamente utilizamos este campo
+    // até alterarmos a ficha da aeronave.
+
     document.getElementById(
         "operador"
     ).textContent =
@@ -157,8 +172,11 @@ function mostrarAeronave(aeronave) {
 
 
     resultado.scrollIntoView({
+
         behavior: "smooth",
+
         block: "start"
+
     });
 
 }
@@ -180,8 +198,11 @@ function mostrarNaoEncontrada(matricula) {
 
 
     naoEncontrada.scrollIntoView({
+
         behavior: "smooth",
+
         block: "center"
+
     });
 
 }
@@ -192,8 +213,11 @@ function mostrarNaoEncontrada(matricula) {
 // ==========================================
 
 btnPesquisar.addEventListener(
+
     "click",
+
     pesquisarAeronave
+
 );
 
 
@@ -202,7 +226,9 @@ btnPesquisar.addEventListener(
 // ==========================================
 
 campoMatricula.addEventListener(
+
     "keydown",
+
     function(event) {
 
         if (event.key === "Enter") {
@@ -212,6 +238,7 @@ campoMatricula.addEventListener(
         }
 
     }
+
 );
 
 
