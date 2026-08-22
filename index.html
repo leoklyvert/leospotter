@@ -30,7 +30,7 @@
 </head>
 
 
-<body>
+<body id="inicio">
 
 
     <!-- ==========================================
@@ -41,11 +41,11 @@
 
         <div class="logo-area">
 
-            <!-- LOGO CLICÁVEL - VOLTA PARA A PÁGINA INICIAL -->
+            <!-- LOGO CLICÁVEL -->
 
             <a
-                href="index.html"
-                aria-label="Voltar para a página inicial do LeoSpotter"
+                href="#inicio"
+                aria-label="Voltar para a página inicial"
             >
 
                 <img
@@ -63,10 +63,6 @@
                     LeoSpotter
                 </h1>
 
-                <p>
-                    Manual de consulta para spotters
-                </p>
-
             </div>
 
         </div>
@@ -74,6 +70,10 @@
     </header>
 
 
+
+    <!-- ==========================================
+         CONTEÚDO PRINCIPAL
+         ========================================== -->
 
     <main class="container">
 
@@ -88,42 +88,54 @@
                 Pesquisar aeródromo
             </h2>
 
+
             <p class="descricao">
-                Digite o código ICAO do aeródromo para
-                consultar seus dados.
+
+                Consulte informações de aeródromos
+                através do código ICAO.
+
             </p>
 
 
-            <div class="campo-pesquisa campo-pesquisa-autocomplete">
+            <div class="campo-pesquisa">
 
-    <div class="autocomplete-container">
+                <input
+                    type="text"
+                    id="icao"
+                    placeholder="Ex.: SBUR"
+                    maxlength="4"
+                    autocomplete="off"
+                    spellcheck="false"
+                    list="listaAerodromos"
+                >
 
-        <input
-            type="text"
-            id="matricula"
-            placeholder="Ex.: PS-BZR"
-            maxlength="10"
-            autocomplete="off"
-            spellcheck="false"
-        >
 
-        <div
-            id="sugestoesAeronaves"
-            class="sugestoes-pesquisa hidden"
-        ></div>
+                <button
+                    type="button"
+                    id="btnPesquisarIcao"
+                >
+                    Pesquisar
+                </button>
 
-    </div>
+            </div>
 
-    <button id="btnPesquisar">
-        Pesquisar
-    </button>
 
-</div>
+            <!-- PREVISÕES DE AERÓDROMOS -->
+
+            <datalist id="listaAerodromos">
+
+                <option value="SBUR">
+                    Uberaba
+                </option>
+
+            </datalist>
 
 
             <p class="dica">
 
-                Aeródromo de teste:
+                Digite o código ICAO do aeródromo.
+
+                Exemplo:
                 <strong>SBUR</strong>
 
             </p>
@@ -141,7 +153,8 @@
             class="resultado hidden"
         >
 
-            <!-- CABEÇALHO -->
+
+            <!-- CABEÇALHO DO RESULTADO -->
 
             <div class="resultado-header">
 
@@ -153,7 +166,7 @@
 
 
                     <h2 id="resultadoIcao">
-                        SBUR
+                        —
                     </h2>
 
 
@@ -172,11 +185,10 @@
 
 
 
-            <!-- ==========================================
-                 DADOS DO AERÓDROMO
-                 ========================================== -->
+            <!-- DADOS DO AERÓDROMO -->
 
             <div class="dados-aerodromo">
+
 
                 <div class="dado">
 
@@ -211,6 +223,45 @@
                     </span>
 
                     <strong id="aerodromoUf">
+                        —
+                    </strong>
+
+                </div>
+
+
+                <div class="dado">
+
+                    <span>
+                        Elevação
+                    </span>
+
+                    <strong id="aerodromoElevacao">
+                        —
+                    </strong>
+
+                </div>
+
+
+                <div class="dado">
+
+                    <span>
+                        Operação diurna
+                    </span>
+
+                    <strong id="aerodromoOperacaoDiurna">
+                        —
+                    </strong>
+
+                </div>
+
+
+                <div class="dado">
+
+                    <span>
+                        Operação noturna
+                    </span>
+
+                    <strong id="aerodromoOperacaoNoturna">
                         —
                     </strong>
 
@@ -314,7 +365,8 @@
 
                 Não encontramos o código ICAO
 
-                <strong id="icaoNaoEncontrado"></strong>
+                <strong id="icaoNaoEncontrado">
+                </strong>
 
                 na base de aeródromos.
 
@@ -334,42 +386,54 @@
                 Pesquisar aeronave
             </h2>
 
+
             <p class="descricao">
-                Digite a matrícula da aeronave para
-                consultar seus dados.
+
+                Consulte informações de uma aeronave
+                através da matrícula.
+
             </p>
 
 
-            <div class="campo-pesquisa campo-pesquisa-autocomplete">
+            <div class="campo-pesquisa">
 
-    <div class="autocomplete-container">
+                <input
+                    type="text"
+                    id="matricula"
+                    placeholder="Ex.: PS-BZR"
+                    maxlength="10"
+                    autocomplete="off"
+                    spellcheck="false"
+                    list="listaAeronaves"
+                >
 
-        <input
-            type="text"
-            id="icao"
-            placeholder="Ex.: SBUR"
-            maxlength="30"
-            autocomplete="off"
-            spellcheck="false"
-        >
 
-        <div
-            id="sugestoesAerodromos"
-            class="sugestoes-pesquisa hidden"
-        ></div>
+                <button
+                    type="button"
+                    id="btnPesquisar"
+                >
+                    Pesquisar
+                </button>
 
-    </div>
+            </div>
 
-    <button id="btnPesquisarIcao">
-        Pesquisar
-    </button>
 
-</div>
+            <!-- PREVISÕES DE AERONAVES -->
+
+            <datalist id="listaAeronaves">
+
+                <option value="PS-BZR">
+                    Beech F33A
+                </option>
+
+            </datalist>
 
 
             <p class="dica">
 
-                Matrícula de teste:
+                Digite a matrícula da aeronave.
+
+                Exemplo:
                 <strong>PS-BZR</strong>
 
             </p>
@@ -387,6 +451,9 @@
             class="resultado hidden"
         >
 
+
+            <!-- CABEÇALHO -->
+
             <div class="resultado-header">
 
                 <div>
@@ -397,12 +464,12 @@
 
 
                     <h2 id="resultadoMatricula">
-                        PS-BZR
+                        —
                     </h2>
 
 
                     <p id="resultadoModelo">
-                        F33A
+                        —
                     </p>
 
                 </div>
@@ -421,6 +488,7 @@
                  ========================================== -->
 
             <div class="dados-aeronave">
+
 
                 <div class="dado">
 
@@ -509,6 +577,7 @@
 
             <div class="minhas-fotos">
 
+
                 <div class="secao-titulo">
 
                     <div>
@@ -516,6 +585,7 @@
                         <span class="etiqueta">
                             MEU ACERVO
                         </span>
+
 
                         <h3>
                             Minhas fotografias
@@ -535,9 +605,7 @@
 
 
 
-                <!-- ==========================================
-                     SEM FOTOS
-                     ========================================== -->
+                <!-- SEM FOTOS -->
 
                 <div
                     id="semFotos"
@@ -555,8 +623,10 @@
 
 
                     <p>
-                        Em breve você poderá adicionar
-                        suas fotografias desta aeronave.
+
+                        Adicione fotografias desta
+                        aeronave ao seu acervo.
+
                     </p>
 
 
@@ -603,6 +673,8 @@
 
 
 
+                    <!-- PREVIEW -->
+
                     <div
                         id="previewFoto"
                         class="preview-foto hidden"
@@ -617,6 +689,8 @@
                     </div>
 
 
+
+                    <!-- DATA -->
 
                     <div class="campo-formulario">
 
@@ -633,6 +707,8 @@
                     </div>
 
 
+
+                    <!-- LOCAL -->
 
                     <div class="campo-formulario">
 
@@ -659,6 +735,8 @@
 
 
 
+                    <!-- OBSERVAÇÃO -->
+
                     <div class="campo-formulario">
 
                         <label for="observacaoFoto">
@@ -675,6 +753,8 @@
                     </div>
 
 
+
+                    <!-- AÇÕES -->
 
                     <div class="acoes-formulario">
 
@@ -728,7 +808,8 @@
 
                 Não encontramos a matrícula
 
-                <strong id="matriculaNaoEncontrada"></strong>
+                <strong id="matriculaNaoEncontrada">
+                </strong>
 
                 na base de aeronaves.
 
@@ -744,6 +825,7 @@
 
         <section class="estatisticas">
 
+
             <div class="estatistica">
 
                 <span class="estatistica-icone">
@@ -757,8 +839,9 @@
                         0
                     </strong>
 
+
                     <span>
-                        Aeronaves
+                        Aeronaves fotografadas
                     </span>
 
                 </div>
@@ -780,6 +863,7 @@
                         0
                     </strong>
 
+
                     <span>
                         Fotografias
                     </span>
@@ -789,6 +873,7 @@
             </div>
 
         </section>
+
 
     </main>
 
@@ -800,90 +885,144 @@
 
     <footer>
 
-    <div class="rodape-principal">
 
-        <p>
-
-            LeoSpotter
-
-            <span>•</span>
-
-            Desenvolvido por Leonardo Moreira
-
-            <span>•</span>
-
-            <span id="versaoSite">
-                v1.4.0
-            </span>
-
-        </p>
-
-    </div>
+        <div class="rodape-conteudo">
 
 
-    <!-- ==========================================
-         CONTATO
-         ========================================== -->
+            <div class="rodape-marca">
 
-    <div class="rodape-contato">
-
-        <strong>
-            Contato
-        </strong>
-
-        <a
-            href="mailto:leospotteruberaba@gmail.com"
-        >
-            ✉ leospotteruberaba@gmail.com
-        </a>
-
-    </div>
+                <strong>
+                    LeoSpotter
+                </strong>
 
 
-    <!-- ==========================================
-         REDES SOCIAIS
-         ========================================== -->
+                <p>
+                    Manual de consulta para spotters
+                    e entusiastas da aviação.
+                </p>
 
-    <div class="rodape-redes">
-
-        <strong>
-            Encontre o LeoSpotter
-        </strong>
+            </div>
 
 
-        <div class="links-redes">
 
-            <a
-                href="https://www.instagram.com/leospotteruberaba/"
-                target="_blank"
-                rel="noopener noreferrer"
-            >
-                📷 Instagram
-            </a>
+            <!-- ==========================================
+                 REDES SOCIAIS
+                 ========================================== -->
 
+            <div class="rodape-redes">
 
-            <a
-                href="https://www.jetphotos.com/photographer/179976"
-                target="_blank"
-                rel="noopener noreferrer"
-            >
-                ✈ JetPhotos
-            </a>
+                <h3>
+                    Encontre o LeoSpotter
+                </h3>
 
 
-            <a
-                href="https://www.planespotters.net/photos/gallery/leoklyvert"
-                target="_blank"
-                rel="noopener noreferrer"
-            >
-                🛫 PlaneSpotters
-            </a>
+                <div class="links-redes">
+
+
+                    <!-- INSTAGRAM -->
+
+                    <a
+                        href="https://www.instagram.com/leospotteruberaba/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label="Instagram LeoSpotter"
+                    >
+
+                        <span>
+                            📷
+                        </span>
+
+                        Instagram
+
+                    </a>
+
+
+
+                    <!-- JETPHOTOS -->
+
+                    <a
+                        href="https://www.jetphotos.com/photographer/179976"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label="Perfil do LeoSpotter no JetPhotos"
+                    >
+
+                        <span>
+                            ✈️
+                        </span>
+
+                        JetPhotos
+
+                    </a>
+
+
+
+                    <!-- PLANESPOTTERS -->
+
+                    <a
+                        href="https://www.planespotters.net/photos/gallery/leoklyvert"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label="Galeria do LeoSpotter no PlaneSpotters"
+                    >
+
+                        <span>
+                            🛩️
+                        </span>
+
+                        PlaneSpotters
+
+                    </a>
+
+
+
+                    <!-- E-MAIL -->
+
+                    <a
+                        href="mailto:leospotteruberaba@gmail.com"
+                        aria-label="Enviar e-mail para o LeoSpotter"
+                    >
+
+                        <span>
+                            ✉️
+                        </span>
+
+                        E-mail
+
+                    </a>
+
+
+                </div>
+
+            </div>
+
+
+
+            <!-- ==========================================
+                 VERSÃO
+                 ========================================== -->
+
+            <div class="rodape-versao">
+
+                <span>
+                    Desenvolvido por Leonardo Moreira
+                </span>
+
+
+                <span
+                    id="versaoSite"
+                    class="versao-site"
+                >
+                    v1.4.0
+                </span>
+
+            </div>
+
 
         </div>
 
-    </div>
 
-</footer>
+    </footer>
 
 
 
@@ -892,6 +1031,7 @@
          ========================================== -->
 
     <script src="app.js"></script>
+
 
 </body>
 
