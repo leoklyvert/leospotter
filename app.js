@@ -2,7 +2,16 @@
 // LeoSpotter
 // Pesquisa de aeronaves + Acervo fotográfico
 // Base RAB / ANAC
+//
+// VERSÃO: 1.1.0
 // ==========================================
+
+
+// ==========================================
+// VERSÃO DO SITE
+// ==========================================
+
+const VERSAO_SITE = "1.1.0";
 
 
 // ==========================================
@@ -34,6 +43,50 @@ const naoEncontrada =
 
 
 // ==========================================
+// ELEMENTOS DAS ESTATÍSTICAS
+// ==========================================
+
+const totalAeronaves =
+    document.getElementById(
+        "totalAeronaves"
+    );
+
+
+const totalFotos =
+    document.getElementById(
+        "totalFotos"
+    );
+
+
+const aeronavesComFotos =
+    document.getElementById(
+        "aeronavesComFotos"
+    );
+
+
+// ==========================================
+// VERSÃO NO RODAPÉ
+// ==========================================
+
+function atualizarVersaoSite() {
+
+    const elemento =
+        document.getElementById(
+            "versaoSite"
+        );
+
+
+    if (elemento) {
+
+        elemento.textContent =
+            `v${VERSAO_SITE}`;
+
+    }
+
+}
+
+
+// ==========================================
 // CARREGAR BASE RAB
 // ==========================================
 
@@ -42,7 +95,9 @@ async function carregarAeronaves() {
     try {
 
         const resposta =
-            await fetch("data/aeronaves.json");
+            await fetch(
+                "data/aeronaves.json"
+            );
 
 
         if (!resposta.ok) {
@@ -63,23 +118,25 @@ async function carregarAeronaves() {
         );
 
 
-        const totalAeronaves =
-            document.getElementById(
-                "totalAeronaves"
-            );
+        // ======================================
+        // ESTATÍSTICA
+        // ======================================
+        //
+        // Não mostramos mais o total do RAB
+        // como "Aeronaves".
+        //
+        // A estatística principal agora é:
+        //
+        // Aeronaves com fotos
+        //
+        // ======================================
+
+        atualizarEstatisticasFotos();
 
 
-        if (totalAeronaves) {
+    }
 
-            totalAeronaves.textContent =
-                aeronaves.length.toLocaleString(
-                    "pt-BR"
-                );
-
-        }
-
-
-    } catch (erro) {
+    catch (erro) {
 
         console.error(
             "Erro ao carregar base:",
@@ -95,7 +152,9 @@ async function carregarAeronaves() {
 // NORMALIZAR MATRÍCULA
 // ==========================================
 
-function normalizarMatricula(matricula) {
+function normalizarMatricula(
+    matricula
+) {
 
     return matricula
         .trim()
@@ -121,9 +180,14 @@ function pesquisarAeronave() {
         );
 
 
-    resultado.classList.add("hidden");
+    resultado.classList.add(
+        "hidden"
+    );
 
-    naoEncontrada.classList.add("hidden");
+
+    naoEncontrada.classList.add(
+        "hidden"
+    );
 
 
     if (!matricula) {
@@ -172,7 +236,9 @@ function pesquisarAeronave() {
 // MOSTRAR AERONAVE
 // ==========================================
 
-function mostrarAeronave(aeronave) {
+function mostrarAeronave(
+    aeronave
+) {
 
     aeronaveAtual =
         aeronave;
@@ -275,24 +341,34 @@ function mostrarNaoEncontrada(
 // PESQUISA
 // ==========================================
 
-btnPesquisar.addEventListener(
-    "click",
-    pesquisarAeronave
-);
+if (btnPesquisar) {
+
+    btnPesquisar.addEventListener(
+        "click",
+        pesquisarAeronave
+    );
+
+}
 
 
-campoMatricula.addEventListener(
-    "keydown",
-    function(event) {
+if (campoMatricula) {
 
-        if (event.key === "Enter") {
+    campoMatricula.addEventListener(
+        "keydown",
+        function(event) {
 
-            pesquisarAeronave();
+            if (
+                event.key === "Enter"
+            ) {
+
+                pesquisarAeronave();
+
+            }
 
         }
+    );
 
-    }
-);
+}
 
 
 // ==========================================
@@ -371,12 +447,6 @@ const contadorFotos =
     );
 
 
-const totalFotos =
-    document.getElementById(
-        "totalFotos"
-    );
-
-
 // ==========================================
 // ABRIR FORMULÁRIO
 // ==========================================
@@ -391,9 +461,11 @@ if (btnAdicionarFoto) {
                 "hidden"
             );
 
+
             semFotos.classList.add(
                 "hidden"
             );
+
 
             campoFoto.focus();
 
@@ -430,8 +502,14 @@ if (campoLocalFoto) {
             campoLocalFoto.value =
                 campoLocalFoto.value
                     .toUpperCase()
-                    .replace(/[^A-Z]/g, "")
-                    .substring(0, 4);
+                    .replace(
+                        /[^A-Z]/g,
+                        ""
+                    )
+                    .substring(
+                        0,
+                        4
+                    );
 
         }
     );
@@ -542,7 +620,11 @@ function salvarFoto() {
             .toUpperCase();
 
 
-    if (!/^[A-Z]{4}$/.test(icao)) {
+    if (
+        !/^[A-Z]{4}$/.test(
+            icao
+        )
+    ) {
 
         alert(
             "Informe um código ICAO válido com 4 letras.\n\nExemplo: SBUR"
@@ -603,9 +685,11 @@ function salvarFoto() {
                     erro
                 );
 
+
                 alert(
                     "A fotografia é grande demais para o armazenamento temporário do navegador."
                 );
+
 
                 fotosAeronave.pop();
 
@@ -615,6 +699,10 @@ function salvarFoto() {
 
 
             atualizarFotos();
+
+
+            atualizarEstatisticasFotos();
+
 
             limparFormularioFoto();
 
@@ -680,6 +768,17 @@ function carregarFotosAeronave(
                     dados
                 );
 
+
+            if (
+                !Array.isArray(
+                    fotosAeronave
+                )
+            ) {
+
+                fotosAeronave = [];
+
+            }
+
         }
 
         catch (erro) {
@@ -688,6 +787,7 @@ function carregarFotosAeronave(
                 "Erro ao carregar fotos:",
                 erro
             );
+
 
             fotosAeronave = [];
 
@@ -756,14 +856,19 @@ function atualizarFotos() {
     }
 
 
-    atualizarTotalFotos();
+    atualizarEstatisticasFotos();
 
 
     if (quantidade === 0) {
 
-        semFotos.classList.remove(
-            "hidden"
-        );
+        if (semFotos) {
+
+            semFotos.classList.remove(
+                "hidden"
+            );
+
+        }
+
 
         removerGaleria();
 
@@ -772,12 +877,221 @@ function atualizarFotos() {
     }
 
 
-    semFotos.classList.add(
-        "hidden"
-    );
+    if (semFotos) {
+
+        semFotos.classList.add(
+            "hidden"
+        );
+
+    }
 
 
     criarGaleria();
+
+}
+
+
+// ==========================================
+// ESTATÍSTICAS DAS FOTOS
+// ==========================================
+//
+// Conta:
+// 1. total de fotografias
+// 2. quantidade de aeronaves únicas
+//    que possuem pelo menos uma fotografia
+//
+// Exemplo:
+//
+// PT-ABC = 5 fotos
+// PR-XYZ = 2 fotos
+//
+// Resultado:
+//
+// Aeronaves com fotos = 2
+// Fotos cadastradas   = 7
+//
+// ==========================================
+
+function atualizarEstatisticasFotos() {
+
+    let total =
+        0;
+
+
+    const matriculasComFotos =
+        new Set();
+
+
+    try {
+
+        for (
+            let i = 0;
+            i < localStorage.length;
+            i++
+        ) {
+
+            const chave =
+                localStorage.key(i);
+
+
+            if (
+                !chave ||
+                !chave.startsWith(
+                    "leospotter_fotos_"
+                )
+            ) {
+
+                continue;
+
+            }
+
+
+            const dados =
+                localStorage.getItem(
+                    chave
+                );
+
+
+            if (!dados) {
+
+                continue;
+
+            }
+
+
+            try {
+
+                const fotos =
+                    JSON.parse(
+                        dados
+                    );
+
+
+                if (
+                    !Array.isArray(
+                        fotos
+                    )
+                ) {
+
+                    continue;
+
+                }
+
+
+                if (
+                    fotos.length === 0
+                ) {
+
+                    continue;
+
+                }
+
+
+                // Total de fotografias
+                total +=
+                    fotos.length;
+
+
+                // A própria chave representa
+                // uma matrícula normalizada.
+                //
+                // Cada chave é contada somente
+                // uma vez pelo Set.
+
+                const matricula =
+                    chave.replace(
+                        "leospotter_fotos_",
+                        ""
+                    );
+
+
+                matriculasComFotos.add(
+                    matricula
+                );
+
+            }
+
+            catch (erroFoto) {
+
+                console.warn(
+                    "Registro de fotos inválido:",
+                    chave,
+                    erroFoto
+                );
+
+            }
+
+        }
+
+    }
+
+    catch (erro) {
+
+        console.error(
+            "Erro ao calcular estatísticas:",
+            erro
+        );
+
+    }
+
+
+    const quantidadeAeronaves =
+        matriculasComFotos.size;
+
+
+    // ======================================
+    // AERONAVES COM FOTOS
+    // ======================================
+
+    if (aeronavesComFotos) {
+
+        aeronavesComFotos.textContent =
+            quantidadeAeronaves.toLocaleString(
+                "pt-BR"
+            );
+
+    }
+
+
+    // ======================================
+    // TOTAL DE FOTOS
+    // ======================================
+
+    if (totalFotos) {
+
+        totalFotos.textContent =
+            total.toLocaleString(
+                "pt-BR"
+            );
+
+    }
+
+
+    console.log(
+        "Estatísticas:",
+        {
+            aeronavesComFotos:
+                quantidadeAeronaves,
+
+            totalFotos:
+                total
+        }
+    );
+
+}
+
+
+// ==========================================
+// COMPATIBILIDADE
+// ==========================================
+//
+// Mantemos esta função porque outras partes
+// do projeto podem utilizá-la.
+// ==========================================
+
+function atualizarTotalFotos() {
+
+    atualizarEstatisticasFotos();
 
 }
 
@@ -960,6 +1274,7 @@ function criarGaleria() {
 
                     event.stopPropagation();
 
+
                     excluirFoto(
                         foto.id
                     );
@@ -1033,7 +1348,9 @@ function removerGaleria() {
 // FORMATAR DATA
 // ==========================================
 
-function formatarData(data) {
+function formatarData(
+    data
+) {
 
     if (!data) {
 
@@ -1046,7 +1363,9 @@ function formatarData(data) {
         data.split("-");
 
 
-    if (partes.length !== 3) {
+    if (
+        partes.length !== 3
+    ) {
 
         return data;
 
@@ -1068,7 +1387,9 @@ function formatarData(data) {
 // ABRIR FOTO
 // ==========================================
 
-function abrirFoto(foto) {
+function abrirFoto(
+    foto
+) {
 
     const janela =
         document.createElement(
@@ -1120,7 +1441,9 @@ function abrirFoto(foto) {
 // EXCLUIR FOTO
 // ==========================================
 
-function excluirFoto(id) {
+function excluirFoto(
+    id
+) {
 
     const confirmar =
         confirm(
@@ -1147,93 +1470,11 @@ function excluirFoto(id) {
 
     salvarFotosNoNavegador();
 
+
     atualizarFotos();
 
-}
 
-
-// ==========================================
-// TOTAL DE FOTOS
-// ==========================================
-
-function atualizarTotalFotos() {
-
-    if (!totalFotos) {
-
-        return;
-
-    }
-
-
-    let total = 0;
-
-
-    try {
-
-        for (
-            let i = 0;
-            i < localStorage.length;
-            i++
-        ) {
-
-            const chave =
-                localStorage.key(i);
-
-
-            if (
-                chave &&
-                chave.startsWith(
-                    "leospotter_fotos_"
-                )
-            ) {
-
-                const dados =
-                    localStorage.getItem(
-                        chave
-                    );
-
-
-                if (dados) {
-
-                    const fotos =
-                        JSON.parse(
-                            dados
-                        );
-
-
-                    if (
-                        Array.isArray(
-                            fotos
-                        )
-                    ) {
-
-                        total +=
-                            fotos.length;
-
-                    }
-
-                }
-
-            }
-
-        }
-
-    }
-
-    catch (erro) {
-
-        console.error(
-            "Erro ao calcular total:",
-            erro
-        );
-
-    }
-
-
-    totalFotos.textContent =
-        total.toLocaleString(
-            "pt-BR"
-        );
+    atualizarEstatisticasFotos();
 
 }
 
@@ -1315,4 +1556,8 @@ function limparFormularioFoto() {
 // INICIALIZAÇÃO
 // ==========================================
 
+atualizarVersaoSite();
+
 carregarAeronaves();
+
+atualizarEstatisticasFotos();
