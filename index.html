@@ -1,4 +1,3 @@
-```html
 <!DOCTYPE html>
 <html lang="pt-BR">
 
@@ -30,271 +29,365 @@
 
 </head>
 
+
 <body>
 
-<header class="topo">
-
-    <div class="logo-area">
-
-        <img
-            src="imagens/logo-leospotter.jpg"
-            alt="LeoSpotter"
-            class="logo"
-        >
-
-        <div>
-
-            <h1>LeoSpotter</h1>
-
-            <p>
-                Seu banco pessoal de aeronaves
-            </p>
-
-        </div>
-
-    </div>
-
-</header>
-
-
-<main class="container">
-
 
     <!-- ==========================================
-         PESQUISA
+         CABEÇALHO
          ========================================== -->
 
-    <section class="pesquisa-card">
+    <header class="topo">
 
-        <h2>
-            Pesquisar aeronave
-        </h2>
+        <div class="logo-area">
 
-        <p class="descricao">
-            Digite a matrícula da aeronave para
-            consultar seus dados.
-        </p>
-
-        <div class="campo-pesquisa">
-
-            <input
-                type="text"
-                id="matricula"
-                placeholder="Ex.: PS-BZR"
-                maxlength="10"
-                autocomplete="off"
-                spellcheck="false"
+            <img
+                src="imagens/logo-leospotter.jpg"
+                alt="LeoSpotter"
+                class="logo"
             >
-
-            <button id="btnPesquisar">
-                Pesquisar
-            </button>
-
-        </div>
-
-        <p class="dica">
-            Matrícula de teste:
-            <strong>PS-BZR</strong>
-        </p>
-
-    </section>
-
-
-    <!-- ==========================================
-         RESULTADO
-         ========================================== -->
-
-    <section
-        id="resultado"
-        class="resultado hidden"
-    >
-
-        <div class="resultado-header">
 
             <div>
 
-                <span class="etiqueta">
-                    AERONAVE ENCONTRADA
-                </span>
-
-                <h2 id="resultadoMatricula">
-                    —
-                </h2>
-
-                <p id="resultadoModelo">
-                    —
-                </p>
-
-            </div>
-
-            <div class="status">
-                ✓ Encontrada
-            </div>
-
-        </div>
-
-
-        <!-- ==========================================
-             DADOS DA AERONAVE
-             ========================================== -->
-
-        <div class="dados-aeronave">
-
-            <div class="dado">
-                <span>Fabricante</span>
-                <strong id="fabricante">—</strong>
-            </div>
-
-            <div class="dado">
-                <span>Modelo</span>
-                <strong id="modelo">—</strong>
-            </div>
-
-            <div class="dado">
-                <span>Nº de série</span>
-                <strong id="numeroSerie">—</strong>
-            </div>
-
-            <div class="dado">
-                <span>Ano de fabricação</span>
-                <strong id="ano">—</strong>
-            </div>
-
-            <div class="dado">
-                <span>Tipo ICAO</span>
-                <strong id="tipoIcao">—</strong>
-            </div>
-
-            <div class="dado">
-                <span>Situação</span>
-                <strong id="situacao">—</strong>
-            </div>
-
-        </div>
-
-
-        <!-- ==========================================
-             MEU ACERVO
-             ========================================== -->
-
-        <div class="minhas-fotos">
-
-            <div class="secao-titulo">
-
-                <div>
-
-                    <span class="etiqueta">
-                        MEU ACERVO
-                    </span>
-
-                    <h3>
-                        Minhas fotografias
-                    </h3>
-
-                </div>
-
-                <span
-                    id="contadorFotos"
-                    class="contador-fotos"
-                >
-                    0 fotos
-                </span>
-
-            </div>
-
-
-            <!-- SEM FOTOS -->
-
-            <div
-                id="semFotos"
-                class="sem-fotos"
-            >
-
-                <div class="icone-camera">
-                    📷
-                </div>
-
-                <h4>
-                    Nenhuma fotografia cadastrada
-                </h4>
+                <h1>LeoSpotter</h1>
 
                 <p>
-                    Adicione uma fotografia desta aeronave.
+                    Seu banco pessoal de aeronaves
                 </p>
 
-                <button
-                    type="button"
-                    id="btnAdicionarFoto"
-                    class="btn-secundario"
+            </div>
+
+        </div>
+
+    </header>
+
+
+
+    <main class="container">
+
+
+        <!-- ==========================================
+             PESQUISA
+             ========================================== -->
+
+        <section class="pesquisa-card">
+
+            <h2>
+                Pesquisar aeronave
+            </h2>
+
+            <p class="descricao">
+                Digite a matrícula da aeronave para
+                consultar seus dados.
+            </p>
+
+
+            <div class="campo-pesquisa">
+
+                <input
+                    type="text"
+                    id="matricula"
+                    placeholder="Ex.: PS-BZR"
+                    maxlength="10"
+                    autocomplete="off"
+                    spellcheck="false"
                 >
-                    + Adicionar fotografia
+
+
+                <button id="btnPesquisar">
+                    Pesquisar
                 </button>
 
             </div>
 
 
-            <!-- FORMULÁRIO -->
+            <p class="dica">
 
-            <div
-                id="formularioFoto"
-                class="formulario-foto hidden"
-            >
+                Matrícula de teste:
+                <strong>PS-BZR</strong>
 
-                <h3>
-                    Adicionar fotografia
-                </h3>
+            </p>
+
+        </section>
 
 
-                <div class="campo-formulario">
 
-                    <label for="foto">
-                        Fotografia
-                    </label>
+        <!-- ==========================================
+             RESULTADO DA PESQUISA
+             ========================================== -->
 
-                    <input
-                        type="file"
-                        id="foto"
-                        accept="image/jpeg,image/png,image/webp"
-                    >
+        <section
+            id="resultado"
+            class="resultado hidden"
+        >
+
+
+            <!-- CABEÇALHO DA AERONAVE -->
+
+            <div class="resultado-header">
+
+                <div>
+
+                    <span class="etiqueta">
+                        AERONAVE ENCONTRADA
+                    </span>
+
+
+                    <h2 id="resultadoMatricula">
+                        PS-BZR
+                    </h2>
+
+
+                    <p id="resultadoModelo">
+                        F33A
+                    </p>
 
                 </div>
 
+
+                <div class="status">
+                    ✓ Encontrada
+                </div>
+
+            </div>
+
+
+
+            <!-- ==========================================
+                 DADOS DA AERONAVE
+                 ========================================== -->
+
+            <div class="dados-aeronave">
+
+
+                <div class="dado">
+
+                    <span>
+                        Fabricante
+                    </span>
+
+                    <strong id="fabricante">
+                        —
+                    </strong>
+
+                </div>
+
+
+                <div class="dado">
+
+                    <span>
+                        Modelo
+                    </span>
+
+                    <strong id="modelo">
+                        —
+                    </strong>
+
+                </div>
+
+
+                <div class="dado">
+
+                    <span>
+                        Nº de série
+                    </span>
+
+                    <strong id="numeroSerie">
+                        —
+                    </strong>
+
+                </div>
+
+
+                <div class="dado">
+
+                    <span>
+                        Ano de fabricação
+                    </span>
+
+                    <strong id="ano">
+                        —
+                    </strong>
+
+                </div>
+
+
+                <div class="dado">
+
+                    <span>
+                        Tipo ICAO
+                    </span>
+
+                    <strong id="tipoIcao">
+                        —
+                    </strong>
+
+                </div>
+
+
+                <div class="dado">
+
+                    <span>
+                        Situação
+                    </span>
+
+                    <strong id="situacao">
+                        —
+                    </strong>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- ==========================================
+                 MEU ACERVO
+                 ========================================== -->
+
+            <div class="minhas-fotos">
+
+
+                <div class="secao-titulo">
+
+                    <div>
+
+                        <span class="etiqueta">
+                            MEU ACERVO
+                        </span>
+
+                        <h3>
+                            Minhas fotografias
+                        </h3>
+
+                    </div>
+
+
+                    <span
+                        id="contadorFotos"
+                        class="contador-fotos"
+                    >
+                        0 fotos
+                    </span>
+
+                </div>
+
+
+
+                <!-- ==========================================
+                     SEM FOTOS
+                     ========================================== -->
 
                 <div
-                    id="previewFoto"
-                    class="preview-foto hidden"
+                    id="semFotos"
+                    class="sem-fotos"
                 >
 
-                    <img
-                        id="imagemPreview"
-                        src=""
-                        alt="Pré-visualização da fotografia"
+                    <div class="icone-camera">
+                        📷
+                    </div>
+
+
+                    <h4>
+                        Nenhuma fotografia cadastrada
+                    </h4>
+
+
+                    <p>
+                        Em breve você poderá adicionar
+                        suas fotografias desta aeronave.
+                    </p>
+
+
+                    <button
+                        type="button"
+                        id="btnAdicionarFoto"
+                        class="btn-secundario"
                     >
+                        + Adicionar fotografia
+                    </button>
 
                 </div>
 
 
-                <div class="campo-formulario">
 
-                    <label for="dataFoto">
-                        Data da foto
-                    </label>
+                <!-- ==========================================
+                     FORMULÁRIO DE FOTOGRAFIA
+                     ========================================== -->
 
-                    <input
-                        type="date"
-                        id="dataFoto"
+                <div
+                    id="formularioFoto"
+                    class="formulario-foto hidden"
+                >
+
+
+                    <h3>
+                        Adicionar fotografia
+                    </h3>
+
+
+                    <!-- FOTO -->
+
+                    <div class="campo-formulario">
+
+                        <label for="foto">
+                            Fotografia
+                        </label>
+
+
+                        <input
+                            type="file"
+                            id="foto"
+                            accept="image/jpeg,image/png,image/webp"
+                        >
+
+                    </div>
+
+
+
+                    <!-- PREVIEW -->
+
+                    <div
+                        id="previewFoto"
+                        class="preview-foto hidden"
                     >
 
-                </div>
+                        <img
+                            id="imagemPreview"
+                            src=""
+                            alt="Pré-visualização da fotografia"
+                        >
+
+                    </div>
 
 
-                <div class="campo-formulario">
 
-                    <label for="localFoto">
-                        Aeródromo (ICAO)
-                    </label>
+                    <!-- DATA -->
 
-                    <div class="icao-consulta">
+                    <div class="campo-formulario">
+
+                        <label for="dataFoto">
+                            Data da foto
+                        </label>
+
+
+                        <input
+                            type="date"
+                            id="dataFoto"
+                        >
+
+                    </div>
+
+
+
+                    <!-- AERÓDROMO -->
+
+                    <div class="campo-formulario">
+
+                        <label for="localFoto">
+                            Aeródromo (ICAO)
+                        </label>
+
 
                         <input
                             type="text"
@@ -305,295 +398,180 @@
                             spellcheck="false"
                         >
 
+
+                        <small>
+                            Informe o código ICAO do aeródromo.
+                        </small>
+
+                    </div>
+
+
+
+                    <!-- OBSERVAÇÃO -->
+
+                    <div class="campo-formulario">
+
+                        <label for="observacaoFoto">
+                            Observação
+                        </label>
+
+
+                        <textarea
+                            id="observacaoFoto"
+                            rows="3"
+                            placeholder="Ex.: Fotografada durante o movimento no aeroporto."
+                        ></textarea>
+
+                    </div>
+
+
+
+                    <!-- BOTÕES -->
+
+                    <div class="acoes-formulario">
+
+
                         <button
                             type="button"
-                            id="btnConsultarAerodromo"
-                            class="btn-consultar"
+                            id="btnCancelarFoto"
+                            class="btn-cancelar"
                         >
-                            Consultar
+                            Cancelar
+                        </button>
+
+
+                        <button
+                            type="button"
+                            id="btnSalvarFoto"
+                            class="btn-salvar"
+                        >
+                            Salvar
                         </button>
 
                     </div>
 
-                    <small>
-                        Informe o código ICAO do aeródromo.
-                    </small>
-
                 </div>
 
+            </div>
 
-                <!-- ======================================
-                     RESULTADO DO AERÓDROMO
-                     ====================================== -->
-
-                <div
-                    id="resultadoAerodromo"
-                    class="resultado-aerodromo hidden"
-                >
-
-                    <div class="aerodromo-cabecalho">
-
-                        <div>
-
-                            <span class="etiqueta">
-                                AERÓDROMO
-                            </span>
-
-                            <h3 id="aerodromoNome">
-                                —
-                            </h3>
-
-                            <strong id="aerodromoIcao">
-                                —
-                            </strong>
-
-                        </div>
-
-                        <span
-                            id="aerodromoStatus"
-                            class="aerodromo-status"
-                        >
-                            Encontrado
-                        </span>
-
-                    </div>
+        </section>
 
 
-                    <div class="dados-aerodromo">
 
-                        <div class="dado">
+        <!-- ==========================================
+             AERONAVE NÃO ENCONTRADA
+             ========================================== -->
 
-                            <span>
-                                Município
-                            </span>
+        <section
+            id="naoEncontrada"
+            class="nao-encontrada hidden"
+        >
 
-                            <strong id="aerodromoMunicipio">
-                                —
-                            </strong>
-
-                        </div>
-
-
-                        <div class="dado">
-
-                            <span>
-                                UF
-                            </span>
-
-                            <strong id="aerodromoUF">
-                                —
-                            </strong>
-
-                        </div>
+            <div class="icone-alerta">
+                🔎
+            </div>
 
 
-                        <div class="dado">
-
-                            <span>
-                                Elevação
-                            </span>
-
-                            <strong id="aerodromoElevacao">
-                                —
-                            </strong>
-
-                        </div>
-
-                    </div>
+            <h3>
+                Aeronave não encontrada
+            </h3>
 
 
-                    <!-- PISTAS -->
+            <p>
 
-                    <div class="subsecao-aerodromo">
+                Não encontramos a matrícula
 
-                        <h4>
-                            🛫 Pistas
-                        </h4>
+                <strong
+                    id="matriculaNaoEncontrada"
+                ></strong>
 
-                        <div id="listaPistas">
+                na base de aeronaves.
 
-                            <p class="dados-indisponiveis">
-                                Nenhuma pista cadastrada.
-                            </p>
+            </p>
 
-                        </div>
-
-                    </div>
+        </section>
 
 
-                    <!-- FREQUÊNCIAS -->
 
-                    <div class="subsecao-aerodromo">
+        <!-- ==========================================
+             ESTATÍSTICAS
+             ========================================== -->
 
-                        <h4>
-                            📻 Frequências
-                        </h4>
-
-                        <div id="listaFrequencias">
-
-                            <p class="dados-indisponiveis">
-                                Nenhuma frequência cadastrada.
-                            </p>
-
-                        </div>
-
-                    </div>
-
-                </div>
+        <section class="estatisticas">
 
 
-                <div class="campo-formulario">
+            <div class="estatistica">
 
-                    <label for="observacaoFoto">
-                        Observação
-                    </label>
-
-                    <textarea
-                        id="observacaoFoto"
-                        rows="3"
-                        placeholder="Ex.: Fotografada durante o movimento no aeroporto."
-                    ></textarea>
-
-                </div>
+                <span class="estatistica-icone">
+                    ✈️
+                </span>
 
 
-                <div class="acoes-formulario">
+                <div>
 
-                    <button
-                        type="button"
-                        id="btnCancelarFoto"
-                        class="btn-cancelar"
-                    >
-                        Cancelar
-                    </button>
+                    <strong id="totalAeronaves">
+                        0
+                    </strong>
 
-                    <button
-                        type="button"
-                        id="btnSalvarFoto"
-                        class="btn-salvar"
-                    >
-                        Salvar
-                    </button>
+                    <span>
+                        Aeronaves
+                    </span>
 
                 </div>
 
             </div>
 
-        </div>
 
-    </section>
+
+            <div class="estatistica">
+
+                <span class="estatistica-icone">
+                    📷
+                </span>
+
+
+                <div>
+
+                    <strong id="totalFotos">
+                        0
+                    </strong>
+
+                    <span>
+                        Fotografias
+                    </span>
+
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
 
 
     <!-- ==========================================
-         NÃO ENCONTRADA
+         RODAPÉ
          ========================================== -->
 
-    <section
-        id="naoEncontrada"
-        class="nao-encontrada hidden"
-    >
-
-        <div class="icone-alerta">
-            🔎
-        </div>
-
-        <h3>
-            Aeronave não encontrada
-        </h3>
+    <footer>
 
         <p>
 
-            Não encontramos a matrícula
+            LeoSpotter
 
-            <strong id="matriculaNaoEncontrada"></strong>
+            <span>•</span>
 
-            na base de aeronaves.
+            Projeto em desenvolvimento
 
         </p>
 
-    </section>
+    </footer>
 
 
-    <!-- ==========================================
-         ESTATÍSTICAS
-         ========================================== -->
 
-    <section class="estatisticas">
-
-        <div class="estatistica">
-
-            <span class="estatistica-icone">
-                ✈️
-            </span>
-
-            <div>
-
-                <strong id="aeronavesComFotos">
-                    0
-                </strong>
-
-                <span>
-                    Aeronaves com fotos
-                </span>
-
-            </div>
-
-        </div>
-
-
-        <div class="estatistica">
-
-            <span class="estatistica-icone">
-                📷
-            </span>
-
-            <div>
-
-                <strong id="totalFotos">
-                    0
-                </strong>
-
-                <span>
-                    Fotografias
-                </span>
-
-            </div>
-
-        </div>
-
-    </section>
-
-</main>
-
-
-<!-- ==========================================
-     RODAPÉ
-     ========================================== -->
-
-<footer>
-
-    <p>
-
-        LeoSpotter
-
-        <span>•</span>
-
-        Projeto em desenvolvimento
-
-        <span>•</span>
-
-        <span id="versaoSite">
-            v1.1.2
-        </span>
-
-    </p>
-
-</footer>
-
-
-<script src="app.js"></script>
+    <script src="app.js"></script>
 
 </body>
 
 </html>
-```
