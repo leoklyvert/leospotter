@@ -46,22 +46,104 @@ jobs:
               "bytes"
           )
 
-          # Remover UTF-8 BOM
+          # ========================================
+          # DECODIFICAR UTF-8
+          # ========================================
+
           texto = conteudo.decode(
               "utf-8-sig"
           )
 
-          dados = json.loads(texto)
+          # ========================================
+          # TENTAR JSON NORMAL
+          # ========================================
 
-          if not isinstance(dados, list):
-              raise Exception(
-                  "Formato inesperado da base."
+          dados = None
+
+          try:
+
+              dados = json.loads(texto)
+
+              if isinstance(dados, list):
+
+                  print(
+                      "Formato detectado: JSON array"
+                  )
+
+              else:
+
+                  dados = [dados]
+
+          except json.JSONDecodeError:
+
+              print(
+                  "JSON não é um único documento."
               )
 
+              print(
+                  "Tentando interpretar como "
+                  "JSON por linhas..."
+              )
+
+              dados = []
+
+              for numero_linha, linha in enumerate(
+                  texto.splitlines(),
+                  start=1
+              ):
+
+                  linha = linha.strip()
+
+                  if not linha:
+                      continue
+
+                  try:
+
+                      registro = json.loads(
+                          linha
+                      )
+
+                      dados.append(
+                          registro
+                      )
+
+                  except json.JSONDecodeError as erro:
+
+                      print()
+                      print(
+                          "Erro na linha:",
+                          numero_linha
+                      )
+
+                      print(
+                          "Conteúdo inicial:"
+                      )
+
+                      print(
+                          linha[:500]
+                      )
+
+                      raise erro
+
+          # ========================================
+          # VERIFICAÇÃO
+          # ========================================
+
+          if not dados:
+
+              raise Exception(
+                  "Nenhum registro encontrado."
+              )
+
+          print()
           print(
-              "Registros:",
+              "Registros encontrados:",
               len(dados)
           )
+
+          # ========================================
+          # PRIMEIRO REGISTRO
+          # ========================================
 
           print()
           print("========================================")
@@ -76,6 +158,10 @@ jobs:
                   indent=2
               )
           )
+
+          # ========================================
+          # PROCURAR MG0009
+          # ========================================
 
           print()
           print("========================================")
@@ -93,7 +179,10 @@ jobs:
               ).upper()
 
               if "MG0009" in texto_item:
-                  encontrados.append(item)
+
+                  encontrados.append(
+                      item
+                  )
 
           print(
               "Registros encontrados:",
@@ -106,6 +195,10 @@ jobs:
                   "CIAD MG0009 não encontrado."
               )
 
+          # ========================================
+          # MOSTRAR RESULTADOS
+          # ========================================
+
           for numero, item in enumerate(
               encontrados,
               start=1
@@ -115,6 +208,8 @@ jobs:
               print(
                   f"========== PISTA {numero} =========="
               )
+
+              print()
 
               print(
                   json.dumps(
@@ -126,7 +221,7 @@ jobs:
 
           print()
           print("========================================")
-          print("✓ TESTE CONCLUÍDO")
+          print("✓ TESTE CONCLUÍDO COM SUCESSO")
           print("========================================")
 
           PY
