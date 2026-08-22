@@ -1,97 +1,150 @@
+/* ==========================================
+   CONFIGURAÇÕES GERAIS
+   ========================================== */
+
 * {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
 }
 
+
 :root {
+
     --azul: #0b3d91;
     --azul-escuro: #082b66;
+
     --laranja: #f28c28;
+
     --fundo: #f4f6f9;
+
     --branco: #ffffff;
+
     --texto: #172033;
     --texto-suave: #667085;
+
     --borda: #e1e5eb;
+
     --sucesso: #16834a;
+
 }
+
 
 body {
-    font-family: Arial, Helvetica, sans-serif;
+
+    font-family:
+        Arial,
+        Helvetica,
+        sans-serif;
+
     background: var(--fundo);
+
     color: var(--texto);
+
     min-height: 100vh;
+
 }
 
 
-/* =========================
+/* ==========================================
    TOPO
-========================= */
+   ========================================== */
 
 .topo {
-    background: linear-gradient(
-        135deg,
-        var(--azul-escuro),
-        var(--azul)
-    );
+
+    background:
+        linear-gradient(
+            135deg,
+            var(--azul-escuro),
+            var(--azul)
+        );
 
     color: white;
-    padding: 24px 20px;
 
-    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.15);
+    padding: 18px 20px;
+
+    box-shadow:
+        0 3px 12px
+        rgba(0, 0, 0, 0.15);
+
 }
 
+
 .logo-area {
+
     max-width: 1000px;
+
     margin: auto;
 
     display: flex;
+
     align-items: center;
-    gap: 14px;
+
+    gap: 12px;
+
 }
 
-..logo {
-    width: 58px;
-    height: 58px;
+
+/* LOGO */
+
+.logo {
+
+    width: 42px;
+    height: 42px;
 
     object-fit: contain;
 
-    border-radius: 10px;
+    border-radius: 8px;
 
-    background: rgba(255, 255, 255, 0.08);
+    background:
+        rgba(255, 255, 255, 0.08);
+
 }
+
 
 .logo-area h1 {
-    font-size: 26px;
+
+    font-size: 25px;
+
     font-weight: 700;
+
 }
+
 
 .logo-area p {
+
     margin-top: 3px;
-    font-size: 14px;
+
+    font-size: 13px;
+
     opacity: 0.82;
+
 }
 
 
-/* =========================
+/* ==========================================
    CONTAINER
-========================= */
+   ========================================== */
 
 .container {
+
     width: 100%;
+
     max-width: 850px;
 
     margin: 40px auto;
 
     padding: 0 20px;
+
 }
 
 
-/* =========================
+/* ==========================================
    PESQUISA
-========================= */
+   ========================================== */
 
 .pesquisa-card {
+
     background: var(--branco);
 
     border-radius: 18px;
@@ -99,30 +152,51 @@ body {
     padding: 30px;
 
     box-shadow:
-        0 5px 20px rgba(0, 0, 0, 0.06);
+        0 5px 20px
+        rgba(0, 0, 0, 0.06);
+
 }
+
 
 .pesquisa-card h2 {
+
     font-size: 23px;
+
 }
+
 
 .descricao {
+
     color: var(--texto-suave);
+
     margin-top: 8px;
+
     margin-bottom: 22px;
+
 }
+
+
+/* CAMPO DE PESQUISA */
 
 .campo-pesquisa {
+
     display: flex;
+
     gap: 10px;
+
 }
 
+
 .campo-pesquisa input {
+
     flex: 1;
 
     height: 52px;
 
-    border: 2px solid var(--borda);
+    border:
+        2px solid
+        var(--borda);
+
     border-radius: 10px;
 
     padding: 0 16px;
@@ -134,19 +208,27 @@ body {
     outline: none;
 
     transition: 0.2s;
+
 }
 
+
 .campo-pesquisa input:focus {
+
     border-color: var(--azul);
 
     box-shadow:
-        0 0 0 3px rgba(11, 61, 145, 0.1);
+        0 0 0 3px
+        rgba(11, 61, 145, 0.1);
+
 }
 
+
 .campo-pesquisa button {
+
     height: 52px;
 
     border: none;
+
     border-radius: 10px;
 
     padding: 0 24px;
@@ -156,31 +238,41 @@ body {
     color: white;
 
     font-size: 16px;
+
     font-weight: 600;
 
     cursor: pointer;
 
     transition: 0.2s;
+
 }
+
 
 .campo-pesquisa button:hover {
-    background: var(--azul-escuro);
+
+    background:
+        var(--azul-escuro);
+
 }
 
+
 .dica {
+
     margin-top: 12px;
 
     font-size: 13px;
 
     color: var(--texto-suave);
+
 }
 
 
-/* =========================
+/* ==========================================
    RESULTADO
-========================= */
+   ========================================== */
 
 .resultado {
+
     margin-top: 25px;
 
     background: var(--branco);
@@ -190,26 +282,37 @@ body {
     padding: 30px;
 
     box-shadow:
-        0 5px 20px rgba(0, 0, 0, 0.06);
+        0 5px 20px
+        rgba(0, 0, 0, 0.06);
+
 }
 
+
 .resultado-header {
+
     display: flex;
 
     align-items: flex-start;
+
     justify-content: space-between;
 
     gap: 20px;
 
     padding-bottom: 24px;
 
-    border-bottom: 1px solid var(--borda);
+    border-bottom:
+        1px solid
+        var(--borda);
+
 }
 
+
 .etiqueta {
+
     display: block;
 
     font-size: 11px;
+
     font-weight: 700;
 
     color: var(--laranja);
@@ -217,23 +320,34 @@ body {
     letter-spacing: 1px;
 
     margin-bottom: 7px;
+
 }
 
+
 .resultado-header h2 {
+
     font-size: 32px;
 
     letter-spacing: 1px;
+
 }
 
+
 .resultado-header p {
+
     color: var(--texto-suave);
 
     margin-top: 4px;
 
     font-size: 16px;
+
 }
 
+
+/* STATUS */
+
 .status {
+
     color: var(--sucesso);
 
     background: #e9f7ef;
@@ -243,17 +357,20 @@ body {
     padding: 7px 12px;
 
     font-size: 13px;
+
     font-weight: 600;
 
     white-space: nowrap;
+
 }
 
 
-/* =========================
-   DADOS
-========================= */
+/* ==========================================
+   DADOS DA AERONAVE
+   ========================================== */
 
 .dados-aeronave {
+
     display: grid;
 
     grid-template-columns:
@@ -262,17 +379,23 @@ body {
     gap: 15px;
 
     margin-top: 25px;
+
 }
 
+
 .dado {
+
     background: #f8f9fb;
 
     border-radius: 10px;
 
     padding: 15px;
+
 }
 
+
 .dado span {
+
     display: block;
 
     color: var(--texto-suave);
@@ -280,37 +403,56 @@ body {
     font-size: 12px;
 
     margin-bottom: 5px;
+
 }
+
 
 .dado strong {
+
     font-size: 15px;
+
 }
 
 
-/* =========================
-   FOTOS
-========================= */
+/* ==========================================
+   MEU ACERVO
+   ========================================== */
 
 .minhas-fotos {
+
     margin-top: 30px;
 
     padding-top: 25px;
 
-    border-top: 1px solid var(--borda);
+    border-top:
+        1px solid
+        var(--borda);
+
 }
 
+
 .secao-titulo {
+
     display: flex;
 
     align-items: center;
+
     justify-content: space-between;
+
+    gap: 15px;
+
 }
+
 
 .secao-titulo h3 {
+
     font-size: 20px;
+
 }
 
+
 .contador-fotos {
+
     font-size: 13px;
 
     background: #eef2f8;
@@ -320,9 +462,16 @@ body {
     border-radius: 20px;
 
     color: var(--texto-suave);
+
 }
 
+
+/* ==========================================
+   SEM FOTOS
+   ========================================== */
+
 .sem-fotos {
+
     text-align: center;
 
     padding: 35px 20px;
@@ -332,48 +481,275 @@ body {
     border-radius: 12px;
 
     margin-top: 18px;
+
 }
 
+
 .icone-camera {
+
     font-size: 35px;
 
     margin-bottom: 10px;
+
 }
+
 
 .sem-fotos h4 {
+
     font-size: 16px;
+
 }
 
+
 .sem-fotos p {
+
     color: var(--texto-suave);
 
     font-size: 14px;
 
     max-width: 450px;
 
-    margin: 8px auto 18px;
+    margin:
+        8px auto 18px;
+
 }
 
+
+/* BOTÃO ADICIONAR */
+
 .btn-secundario {
-    border: 1px solid var(--borda);
+
+    border:
+        1px solid
+        var(--borda);
 
     background: white;
 
-    color: var(--texto-suave);
+    color: var(--azul);
 
     border-radius: 8px;
 
     padding: 10px 15px;
 
-    cursor: not-allowed;
+    cursor: pointer;
+
+    font-weight: 600;
+
+    transition: 0.2s;
+
 }
 
 
-/* =========================
+.btn-secundario:hover {
+
+    background: #f1f5fb;
+
+    border-color: var(--azul);
+
+}
+
+
+/* ==========================================
+   FORMULÁRIO DE FOTOGRAFIA
+   ========================================== */
+
+.formulario-foto {
+
+    margin-top: 20px;
+
+    padding: 22px;
+
+    background: #f8f9fb;
+
+    border:
+        1px solid
+        var(--borda);
+
+    border-radius: 12px;
+
+}
+
+
+.formulario-foto h3 {
+
+    font-size: 19px;
+
+    margin-bottom: 20px;
+
+}
+
+
+/* CAMPOS */
+
+.campo-formulario {
+
+    margin-bottom: 16px;
+
+}
+
+
+.campo-formulario label {
+
+    display: block;
+
+    font-size: 13px;
+
+    font-weight: 600;
+
+    margin-bottom: 6px;
+
+}
+
+
+.campo-formulario input,
+.campo-formulario textarea {
+
+    width: 100%;
+
+    border:
+        1px solid
+        var(--borda);
+
+    border-radius: 8px;
+
+    padding: 11px;
+
+    font-family: inherit;
+
+    font-size: 14px;
+
+    background: white;
+
+    outline: none;
+
+}
+
+
+.campo-formulario input:focus,
+.campo-formulario textarea:focus {
+
+    border-color: var(--azul);
+
+    box-shadow:
+        0 0 0 3px
+        rgba(11, 61, 145, 0.08);
+
+}
+
+
+.campo-formulario textarea {
+
+    resize: vertical;
+
+}
+
+
+/* ==========================================
+   PREVIEW DA FOTO
+   ========================================== */
+
+.preview-foto {
+
+    margin-bottom: 18px;
+
+    text-align: center;
+
+}
+
+
+.preview-foto img {
+
+    display: block;
+
+    width: 100%;
+
+    max-height: 400px;
+
+    object-fit: contain;
+
+    border-radius: 10px;
+
+}
+
+
+/* ==========================================
+   BOTÕES DO FORMULÁRIO
+   ========================================== */
+
+.acoes-formulario {
+
+    display: flex;
+
+    justify-content: flex-end;
+
+    gap: 10px;
+
+    margin-top: 20px;
+
+}
+
+
+.btn-cancelar,
+.btn-salvar {
+
+    border: none;
+
+    border-radius: 8px;
+
+    padding: 10px 18px;
+
+    font-size: 14px;
+
+    font-weight: 600;
+
+    cursor: pointer;
+
+}
+
+
+.btn-cancelar {
+
+    background: white;
+
+    border:
+        1px solid
+        var(--borda);
+
+    color: var(--texto-suave);
+
+}
+
+
+.btn-cancelar:hover {
+
+    background: #f4f6f9;
+
+}
+
+
+.btn-salvar {
+
+    background: var(--azul);
+
+    color: white;
+
+}
+
+
+.btn-salvar:hover {
+
+    background:
+        var(--azul-escuro);
+
+}
+
+
+/* ==========================================
    NÃO ENCONTRADA
-========================= */
+   ========================================== */
 
 .nao-encontrada {
+
     margin-top: 25px;
 
     background: white;
@@ -385,31 +761,43 @@ body {
     text-align: center;
 
     box-shadow:
-        0 5px 20px rgba(0, 0, 0, 0.06);
+        0 5px 20px
+        rgba(0, 0, 0, 0.06);
+
 }
 
+
 .icone-alerta {
+
     font-size: 35px;
 
     margin-bottom: 10px;
+
 }
+
 
 .nao-encontrada h3 {
+
     font-size: 19px;
+
 }
 
+
 .nao-encontrada p {
+
     color: var(--texto-suave);
 
     margin-top: 8px;
+
 }
 
 
-/* =========================
+/* ==========================================
    ESTATÍSTICAS
-========================= */
+   ========================================== */
 
 .estatisticas {
+
     display: grid;
 
     grid-template-columns:
@@ -418,9 +806,12 @@ body {
     gap: 15px;
 
     margin-top: 25px;
+
 }
 
+
 .estatistica {
+
     background: white;
 
     border-radius: 14px;
@@ -434,116 +825,214 @@ body {
     gap: 14px;
 
     box-shadow:
-        0 3px 12px rgba(0, 0, 0, 0.04);
+        0 3px 12px
+        rgba(0, 0, 0, 0.04);
+
 }
+
 
 .estatistica-icone {
+
     font-size: 25px;
+
 }
 
+
 .estatistica strong {
+
     display: block;
 
     font-size: 21px;
+
 }
 
+
 .estatistica span:not(.estatistica-icone) {
+
     color: var(--texto-suave);
 
     font-size: 13px;
+
 }
 
 
-/* =========================
+/* ==========================================
    FOOTER
-========================= */
+   ========================================== */
 
 footer {
+
     text-align: center;
 
-    padding: 25px 20px 35px;
+    padding:
+        25px
+        20px
+        35px;
 
     color: var(--texto-suave);
 
     font-size: 12px;
+
 }
+
 
 footer span {
+
     margin: 0 5px;
+
 }
 
 
-/* =========================
+/* ==========================================
    UTILITÁRIO
-========================= */
+   ========================================== */
 
 .hidden {
+
     display: none !important;
+
 }
 
 
-/* =========================
+/* ==========================================
    CELULAR
-========================= */
+   ========================================== */
 
 @media (max-width: 600px) {
 
-    ..logo {
-    width: 50px;
-    height: 50px;
-}
+
+    .topo {
+
+        padding: 18px 16px;
+
     }
+
+
+    .logo {
+
+        width: 38px;
+        height: 38px;
+
+    }
+
+
+    .logo-area {
+
+        gap: 10px;
+
+    }
+
 
     .logo-area h1 {
-        font-size: 23px;
+
+        font-size: 22px;
+
     }
+
 
     .logo-area p {
-        font-size: 13px;
+
+        font-size: 12px;
+
     }
 
+
     .container {
+
         margin: 25px auto;
 
         padding: 0 14px;
+
     }
+
 
     .pesquisa-card,
     .resultado {
-        padding: 22px 18px;
+
+        padding:
+            22px
+            18px;
+
     }
+
 
     .campo-pesquisa {
+
         flex-direction: column;
+
     }
+
 
     .campo-pesquisa button {
+
         width: 100%;
+
     }
+
 
     .dados-aeronave {
+
         grid-template-columns: 1fr;
+
     }
+
 
     .resultado-header {
+
         flex-direction: column;
+
     }
+
 
     .resultado-header h2 {
+
         font-size: 28px;
+
     }
+
 
     .status {
+
         align-self: flex-start;
+
     }
+
 
     .estatisticas {
+
         grid-template-columns: 1fr;
+
     }
 
+
     .secao-titulo {
+
         align-items: flex-start;
+
         gap: 10px;
+
+    }
+
+
+    .formulario-foto {
+
+        padding: 18px;
+
+    }
+
+
+    .acoes-formulario {
+
+        flex-direction: column-reverse;
+
+    }
+
+
+    .btn-cancelar,
+    .btn-salvar {
+
+        width: 100%;
+
     }
 
 }
