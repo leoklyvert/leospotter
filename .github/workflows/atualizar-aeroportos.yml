@@ -1,226 +1,541 @@
-name: Descobrir pista SBUR
+name: Atualizar aeroportos
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * 1"
+
+permissions:
+  contents: write
 
 jobs:
-  descobrir:
+  atualizar:
     runs-on: ubuntu-latest
 
     steps:
 
-      - name: Baixar base de pistas
+      - name: Baixar repositório
+        uses: actions/checkout@v4
+
+      - name: Atualizar base de aeroportos
         run: |
+
           python - <<'PY'
+
           import json
+          import re
+          import time
           import urllib.request
+          from html import unescape
+          from pathlib import Path
 
-          url = (
-              "https://sistemas.anac.gov.br/"
-              "dadosabertos/Aerodromos/"
-              "Aer%C3%B3dromos%20P%C3%BAblicos/"
-              "Pistas%20de%20Pouso%20e%20Decolagem/"
-              "pda_aerodromos_publicos_pistas_pouso_decolagem.json"
-          )
 
-          print("Baixando base de pistas...")
+          # ==========================================
+          # CONFIGURAÇÃO
+          # ==========================================
 
-          with urllib.request.urlopen(
-              url,
-              timeout=180
-          ) as resposta:
+          ARQUIVO = Path("data/aeroportos.json")
 
-              conteudo = resposta.read()
+          INTERVALO = 0.3
 
-          print(
-              "Tamanho:",
-              len(conteudo),
-              "bytes"
-          )
-
-          texto = conteudo.decode(
-              "utf-8-sig"
-          )
-
-          dados = []
-
-          for linha in texto.splitlines():
-
-              linha = linha.strip()
-
-              if not linha:
-                  continue
-
-              dados.append(
-                  json.loads(linha)
-              )
-
-          print(
-              "Registros:",
-              len(dados)
-          )
-
-          # ========================================
-          # MOSTRAR TIPOS DE CONJUNTO
-          # ========================================
-
+          print("========================================")
+          print("ATUALIZAÇÃO DA BASE DE AEROPORTOS")
+          print("========================================")
           print()
-          print("========================================")
-          print("CONJUNTOS DE DADOS")
-          print("========================================")
 
-          conjuntos = sorted(
-              set(
-                  str(
-                      item.get(
-                          "ConjuntoDado"
-                      )
-                  )
-                  for item in dados
-              )
-          )
 
-          for conjunto in conjuntos:
+          # ==========================================
+          # LER BASE EXISTENTE
+          # ==========================================
 
-              quantidade = sum(
-                  1
-                  for item in dados
-                  if str(
-                      item.get(
-                          "ConjuntoDado"
-                      )
-                  ) == conjunto
-              )
-
-              print(
-                  quantidade,
-                  "->",
-                  conjunto
-              )
-
-          # ========================================
-          # PROCURAR PÚBLICOS
-          # ========================================
-
+          print("Lendo:")
+          print(ARQUIVO)
           print()
-          print("========================================")
-          print("PISTAS DE AERÓDROMOS PÚBLICOS")
-          print("========================================")
 
-          publicos = []
+          with open(
+              ARQUIVO,
+              "r",
+              encoding="utf-8"
+          ) as arquivo:
 
-          for item in dados:
+              aeroportos = json.load(
+                  arquivo
+              )
 
-              conjunto = str(
-                  item.get(
-                      "ConjuntoDado"
-                  )
-              ).lower()
-
-              if "públicos" in conjunto:
-
-                  publicos.append(
-                      item
-                  )
 
           print(
-              "Registros públicos:",
-              len(publicos)
+              "Aeroportos encontrados:",
+              len(aeroportos)
           )
 
-          # ========================================
-          # PROCURAR TERMOS RELACIONADOS AO SBUR
-          # ========================================
 
-          print()
-          print("========================================")
-          print("PROCURANDO SBUR / UBERABA / MARIO")
-          print("========================================")
+          # ==========================================
+          # FUNÇÃO AISWEB
+          # ==========================================
 
-          encontrados = []
+          def consultar_aisweb(icao):
 
-          termos = [
-              "SBUR",
-              "UBERABA",
-              "MARIO DE ALMEIDA FRANCO",
-              "MG0009"
-          ]
+              url = (
+                  "https://aisweb.decea.mil.br/"
+                  "?codigo="
+                  + icao
+                  + "&i=aerodromos"
+              )
 
-          for item in publicos:
+              requisicao = urllib.request.Request(
 
-              texto_item = json.dumps(
-                  item,
-                  ensure_ascii=False
-              ).upper()
+                  url,
 
-              for termo in termos:
+                  headers={
+                      "User-Agent":
+                      "Mozilla/5.0 "
+                      "(Windows NT 10.0; Win64; x64) "
+                      "AppleWebKit/537.36 "
+                      "(KHTML, like Gecko) "
+                      "Chrome/120 Safari/537.36"
+                  }
 
-                  if termo in texto_item:
+              )
 
-                      encontrados.append(
-                          item
-                      )
+              with urllib.request.urlopen(
+                  requisicao,
+                  timeout=60
+              ) as resposta:
 
-                      break
+                  conteudo = resposta.read()
 
-          print(
-              "Registros encontrados:",
-              len(encontrados)
-          )
 
-          for numero, item in enumerate(
-              encontrados[:20],
+              texto = conteudo.decode(
+                  "utf-8",
+                  errors="replace"
+              )
+
+              texto = unescape(
+                  texto
+              )
+
+
+              # ======================================
+              # LIMPAR HTML
+              # ======================================
+
+              texto = re.sub(
+                  r"<script.*?</script>",
+                  " ",
+                  texto,
+                  flags=re.I | re.S
+              )
+
+              texto = re.sub(
+                  r"<style.*?</style>",
+                  " ",
+                  texto,
+                  flags=re.I | re.S
+              )
+
+              texto = re.sub(
+                  r"<br\s*/?>",
+                  "\n",
+                  texto,
+                  flags=re.I
+              )
+
+              texto = re.sub(
+                  r"</p>|</div>|</tr>|</li>|</h[1-6]>",
+                  "\n",
+                  texto,
+                  flags=re.I
+              )
+
+              texto = re.sub(
+                  r"<[^>]+>",
+                  " ",
+                  texto
+              )
+
+              texto = re.sub(
+                  r"[ \t]+",
+                  " ",
+                  texto
+              )
+
+              texto = re.sub(
+                  r"\n\s*\n+",
+                  "\n",
+                  texto
+              )
+
+              texto = texto.strip()
+
+              texto_upper = texto.upper()
+
+
+              resultado = {
+
+                  "pistas": [],
+
+                  "frequencias": [],
+
+                  "distancias_declaradas": []
+
+              }
+
+
+              # ======================================
+              # PISTA
+              # ======================================
+
+              padrao_pista = re.search(
+
+                  r"(\d{2})\s*-\s*.*?"
+                  r"\(\s*"
+                  r"(\d+)\s*[xX]\s*(\d+)"
+                  r"\s+([A-Z0-9]+)"
+                  r"\s+([0-9]+/[A-Z0-9/]+)"
+                  r".*?"
+                  r"\)\s*-\s*.*?"
+                  r"-\s*(\d{2})",
+
+                  texto_upper,
+
+                  re.S
+
+              )
+
+
+              if padrao_pista:
+
+                  resultado["pistas"].append({
+
+                      "designacao":
+                      padrao_pista.group(1)
+                      + "/"
+                      + padrao_pista.group(6),
+
+                      "comprimento":
+                      int(
+                          padrao_pista.group(2)
+                      ),
+
+                      "largura":
+                      int(
+                          padrao_pista.group(3)
+                      ),
+
+                      "superficie":
+                      padrao_pista.group(4),
+
+                      "pcr":
+                      padrao_pista.group(5)
+
+                  })
+
+
+              # ======================================
+              # FREQUÊNCIAS
+              # ======================================
+
+              frequencias = re.findall(
+
+                  r"(?:COM\s*-\s*)?"
+                  r"([A-ZÀ-Ú0-9 /-]{2,40})"
+                  r"\s+\[\d+\]"
+                  r"(?:\s+\[\d+\])*"
+                  r"\s+"
+                  r"(\d{3}\.\d{3})",
+
+                  texto_upper
+
+              )
+
+
+              for servico, frequencia in frequencias:
+
+                  servico = servico.strip()
+
+
+                  existe = any(
+
+                      f["servico"] == servico
+                      and
+                      f["frequencia"] == frequencia
+
+                      for f in resultado[
+                          "frequencias"
+                      ]
+
+                  )
+
+
+                  if not existe:
+
+                      resultado[
+                          "frequencias"
+                      ].append({
+
+                          "servico":
+                          servico,
+
+                          "frequencia":
+                          frequencia
+
+                      })
+
+
+              # ======================================
+              # DISTÂNCIAS DECLARADAS
+              # ======================================
+
+              padrao_distancias = re.findall(
+
+                  r"\n\s*(\d{2})\s+"
+                  r"(\d+)\s+"
+                  r"(\d+)\s+"
+                  r"(\d+)\s+"
+                  r"(\d+)",
+
+                  texto
+
+              )
+
+
+              for (
+
+                  cabeceira,
+                  tora,
+                  toda,
+                  asda,
+                  lda
+
+              ) in padrao_distancias:
+
+                  resultado[
+                      "distancias_declaradas"
+                  ].append({
+
+                      "rwy":
+                      cabeceira,
+
+                      "tora":
+                      int(tora),
+
+                      "toda":
+                      int(toda),
+
+                      "asda":
+                      int(asda),
+
+                      "lda":
+                      int(lda)
+
+                  })
+
+
+              # ======================================
+              # VALIDAÇÃO
+              # ======================================
+
+              if not resultado["pistas"]:
+
+                  raise Exception(
+                      "Nenhuma pista encontrada"
+                  )
+
+
+              return resultado
+
+
+          # ==========================================
+          # PROCESSAMENTO
+          # ==========================================
+
+          atualizados = 0
+          erros = 0
+          sem_icao = 0
+
+
+          for numero, aeroporto in enumerate(
+              aeroportos,
               start=1
           ):
 
-              print()
-              print(
-                  f"========== REGISTRO {numero} =========="
+              icao = aeroporto.get(
+                  "icao"
               )
 
+
+              if not icao:
+
+                  sem_icao += 1
+
+                  continue
+
+
+              icao = str(
+                  icao
+              ).strip().upper()
+
+
               print(
-                  json.dumps(
-                      item,
-                      ensure_ascii=False,
-                      indent=2
+                  f"[{numero}/{len(aeroportos)}] "
+                  f"Consultando {icao}..."
+              )
+
+
+              try:
+
+                  dados_aisweb = consultar_aisweb(
+                      icao
                   )
-              )
 
-          # ========================================
-          # MOSTRAR ALGUNS REGISTROS PÚBLICOS
-          # ========================================
 
-          if not encontrados:
+                  # ==================================
+                  # ATUALIZAR SOMENTE SE DEU CERTO
+                  # ==================================
 
-              print()
-              print("Nenhum termo encontrado.")
-              print()
-              print(
-                  "Mostrando os primeiros "
-                  "10 registros públicos:"
-              )
+                  aeroporto[
+                      "pistas"
+                  ] = dados_aisweb[
+                      "pistas"
+                  ]
 
-              for numero, item in enumerate(
-                  publicos[:10],
-                  start=1
-              ):
+                  aeroporto[
+                      "frequencias"
+                  ] = dados_aisweb[
+                      "frequencias"
+                  ]
 
-                  print()
+                  aeroporto[
+                      "distancias_declaradas"
+                  ] = dados_aisweb[
+                      "distancias_declaradas"
+                  ]
+
+
+                  atualizados += 1
+
+
                   print(
-                      f"========== PÚBLICO {numero} =========="
+                      f"  ✓ {icao} atualizado"
+                  )
+
+
+              except Exception as erro:
+
+                  erros += 1
+
+                  print(
+                      f"  ! {icao}: {erro}"
                   )
 
                   print(
-                      json.dumps(
-                          item,
-                          ensure_ascii=False,
-                          indent=2
-                      )
+                      "    Mantendo dados anteriores."
                   )
+
+
+              time.sleep(
+                  INTERVALO
+              )
+
+
+          # ==========================================
+          # SALVAR
+          # ==========================================
+
+          with open(
+              ARQUIVO,
+              "w",
+              encoding="utf-8"
+          ) as arquivo:
+
+              json.dump(
+                  aeroportos,
+                  arquivo,
+                  ensure_ascii=False,
+                  indent=2
+              )
+
+              arquivo.write(
+                  "\n"
+              )
+
+
+          # ==========================================
+          # RESUMO
+          # ==========================================
 
           print()
           print("========================================")
-          print("TESTE FINALIZADO")
+          print("RESUMO")
           print("========================================")
 
+          print(
+              "Total:",
+              len(aeroportos)
+          )
+
+          print(
+              "Atualizados:",
+              atualizados
+          )
+
+          print(
+              "Com erro:",
+              erros
+          )
+
+          print(
+              "Sem ICAO:",
+              sem_icao
+          )
+
+          print()
+          print("Arquivo atualizado:")
+          print(ARQUIVO)
+
           PY
+
+
+      - name: Verificar alterações
+        id: verificar
+        run: |
+
+          if git diff --quiet -- data/aeroportos.json; then
+
+            echo "alterado=false" >> "$GITHUB_OUTPUT"
+
+            echo "Nenhuma alteração na base."
+
+          else
+
+            echo "alterado=true" >> "$GITHUB_OUTPUT"
+
+            echo "A base foi alterada."
+
+            git diff --stat -- data/aeroportos.json
+
+          fi
+
+
+      - name: Commit e push
+        if: steps.verificar.outputs.alterado == 'true'
+        run: |
+
+          git config user.name "github-actions[bot]"
+
+          git config user.email \
+            "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add data/aeroportos.json
+
+          git commit \
+            -m "Atualizar dados dos aeroportos"
+
+          git push
+
+      - name: Finalização
+        run: |
+
+          echo "========================================"
+          echo "ATUALIZAÇÃO CONCLUÍDA"
+          echo "========================================"
