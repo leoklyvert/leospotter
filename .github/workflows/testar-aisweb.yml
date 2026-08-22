@@ -1,4 +1,4 @@
-name: Testar AISWEB
+name: Testar parser AISWEB
 
 on:
   workflow_dispatch:
@@ -9,10 +9,17 @@ jobs:
 
     steps:
 
-      - name: Consultar AISWEB
+      - name: Consultar e interpretar AISWEB
         run: |
           python - <<'PY'
+          import re
+          import json
           import urllib.request
+          from html import unescape
+
+          # ==========================================
+          # CONFIGURAÇÃO
+          # ==========================================
 
           icao = "SBUR"
 
@@ -24,14 +31,16 @@ jobs:
           )
 
           print("========================================")
-          print("TESTE AISWEB")
+          print("PARSER AISWEB")
           print("========================================")
           print()
           print("ICAO:", icao)
+          print("URL:", url)
           print()
-          print("URL:")
-          print(url)
-          print()
+
+          # ==========================================
+          # DOWNLOAD
+          # ==========================================
 
           requisicao = urllib.request.Request(
               url,
@@ -40,6 +49,7 @@ jobs:
                   "Mozilla/5.0 "
                   "(Windows NT 10.0; Win64; x64) "
                   "AppleWebKit/537.36 "
+                  "(KHTML, like Gecko) "
                   "Chrome/120 Safari/537.36"
               }
           )
@@ -51,57 +61,330 @@ jobs:
 
               conteudo = resposta.read()
 
-          print(
-              "HTTP:",
-              resposta.status
-          )
-
+          print("HTTP:", resposta.status)
           print(
               "Tamanho:",
               len(conteudo),
               "bytes"
           )
 
+          # ==========================================
+          # LIMPEZA HTML
+          # ==========================================
+
           texto = conteudo.decode(
               "utf-8",
               errors="replace"
           )
 
-          print()
-          print("========================================")
-          print("PROCURANDO INFORMAÇÕES")
-          print("========================================")
-          print()
+          texto = unescape(texto)
 
-          termos = [
-              "MARIO DE ALMEIDA FRANCO",
-              "SBUR",
-              "120.800",
-              "1759x45",
-              "ASPH"
-          ]
+          # Remove scripts e estilos
+          texto = re.sub(
+              r"<script.*?</script>",
+              " ",
+              texto,
+              flags=re.I | re.S
+          )
 
-          texto_maiusculo = texto.upper()
+          texto = re.sub(
+              r"<style.*?</style>",
+              " ",
+              texto,
+              flags=re.I | re.S
+          )
 
-          for termo in termos:
+          # Quebras HTML
+          texto = re.sub(
+              r"<br\s*/?>",
+              "\n",
+              texto,
+              flags=re.I
+          )
 
-              if termo.upper() in texto_maiusculo:
+          texto = re.sub(
+              r"</p>|</div>|</tr>|</li>|</h[1-6]>",
+              "\n",
+              texto,
+              flags=re.I
+          )
 
-                  print(
-                      "✓ Encontrado:",
-                      termo
+          # Remove tags
+          texto = re.sub(
+              r"<[^>]+>",
+              " ",
+              texto
+          )
+
+          # Normaliza espaços
+          texto = re.sub(
+              r"[ \t]+",
+              " ",
+              texto
+          )
+
+          texto = re.sub(
+              r"\n\s*\n+",
+              "\n",
+              texto
+          )
+
+          texto = texto.strip()
+
+          # ==========================================
+          # NORMALIZAÇÃO
+          # ==========================================
+
+          texto_upper = texto.upper()
+
+          # ==========================================
+          # AERÓDROMO
+          # ==========================================
+
+          resultado = {
+              "icao": icao,
+              "nome": None,
+              "cidade": None,
+              "uf": None,
+              "pistas": [],
+              "frequencias": [],
+              "distancias_declaradas": [],
+              "atualizacao": None
+          }
+
+          # Exemplo:
+          # MARIO DE ALMEIDA FRANCO (SBUR) / UBERABA, MG
+
+          padrao_aeroporto = re.search(
+              r"([A-ZÀ-Ú0-9 .'\-]+)\s*\(\s*"
+              + re.escape(icao)
+              + r"\s*\)\s*/\s*"
+              r"([^,\n]+),\s*([A-Z]{2})",
+              texto_upper
+          )
+
+          if padrao_aeroporto:
+
+              resultado["nome"] = (
+                  padrao_aeroporto.group(1)
+                  .strip()
+                  .title()
+              )
+
+              resultado["cidade"] = (
+                  padrao_aeroporto.group(2)
+                  .strip()
+                  .title()
+              )
+
+              resultado["uf"] = (
+                  padrao_aeroporto.group(3)
+                  .strip()
+              )
+
+          # ==========================================
+          # PISTA
+          # ==========================================
+
+          # Exemplo AISWEB:
+          #
+          # 17 - L9 [3], L12 -
+          # (1759x45 ASPH 480/F/A/X/T [7] L14, L15) -
+          # L9 [4], L12 - 35
+
+          padrao_pista = re.search(
+              r"(\d{2})\s*-\s*.*?"
+              r"\(\s*"
+              r"(\d+)\s*[xX]\s*(\d+)"
+              r"\s+([A-Z0-9]+)"
+              r"\s+([0-9]+/[A-Z0-9/]+)"
+              r".*?"
+              r"\)\s*-\s*.*?"
+              r"-\s*(\d{2})",
+              texto_upper,
+              re.S
+          )
+
+          if padrao_pista:
+
+              pista = {
+                  "designacao": (
+                      padrao_pista.group(1)
+                      + "/"
+                      + padrao_pista.group(6)
+                  ),
+                  "comprimento": int(
+                      padrao_pista.group(2)
+                  ),
+                  "largura": int(
+                      padrao_pista.group(3)
+                  ),
+                  "superficie": (
+                      padrao_pista.group(4)
+                  ),
+                  "pcr": (
+                      padrao_pista.group(5)
+                  )
+              }
+
+              resultado["pistas"].append(
+                  pista
+              )
+
+          # ==========================================
+          # FREQUÊNCIAS
+          # ==========================================
+
+          # Exemplo:
+          #
+          # COM - RÁDIO [5] [6] 120.800
+
+          frequencias = re.findall(
+              r"(?:COM\s*-\s*)?"
+              r"([A-ZÀ-Ú0-9 /-]{2,40})"
+              r"\s+\[\d+\]"
+              r"(?:\s+\[\d+\])*"
+              r"\s+"
+              r"(\d{3}\.\d{3})",
+              texto_upper
+          )
+
+          for servico, frequencia in frequencias:
+
+              servico = servico.strip()
+
+              if not any(
+                  f["frequencia"] == frequencia
+                  and f["servico"] == servico
+                  for f in resultado["frequencias"]
+              ):
+
+                  resultado["frequencias"].append(
+                      {
+                          "servico": servico,
+                          "frequencia": frequencia
+                      }
                   )
 
-              else:
+          # ==========================================
+          # DISTÂNCIAS DECLARADAS
+          # ==========================================
 
-                  print(
-                      "✗ Não encontrado:",
-                      termo
-                  )
+          padrao_distancias = re.findall(
+              r"\n\s*(17|35)\s+"
+              r"(\d+)\s+"
+              r"(\d+)\s+"
+              r"(\d+)\s+"
+              r"(\d+)",
+              texto
+          )
+
+          for (
+              cabeceira,
+              tora,
+              toda,
+              asda,
+              lda
+          ) in padrao_distancias:
+
+              resultado[
+                  "distancias_declaradas"
+              ].append(
+                  {
+                      "rwy": cabeceira,
+                      "tora": int(tora),
+                      "toda": int(toda),
+                      "asda": int(asda),
+                      "lda": int(lda)
+                  }
+              )
+
+          # ==========================================
+          # ÚLTIMA ATUALIZAÇÃO
+          # ==========================================
+
+          padrao_atualizacao = re.search(
+              r"ÚLTIMA ATUALIZAÇÃO:\s*"
+              r"(\d{2}/\d{2}/\d{4})",
+              texto_upper
+          )
+
+          if padrao_atualizacao:
+
+              resultado["atualizacao"] = (
+                  padrao_atualizacao.group(1)
+              )
+
+          # ==========================================
+          # RESULTADO
+          # ==========================================
 
           print()
           print("========================================")
-          print("TESTE CONCLUÍDO")
+          print("RESULTADO INTERPRETADO")
+          print("========================================")
+          print()
+
+          print(
+              json.dumps(
+                  resultado,
+                  ensure_ascii=False,
+                  indent=2
+              )
+          )
+
+          # ==========================================
+          # VALIDAÇÃO
+          # ==========================================
+
+          print()
+          print("========================================")
+          print("VALIDAÇÃO")
+          print("========================================")
+
+          erros = []
+
+          if resultado["icao"] != icao:
+              erros.append(
+                  "ICAO não identificado"
+              )
+
+          if not resultado["pistas"]:
+              erros.append(
+                  "Nenhuma pista encontrada"
+              )
+
+          if not resultado["frequencias"]:
+              erros.append(
+                  "Nenhuma frequência encontrada"
+              )
+
+          if erros:
+
+              print()
+
+              for erro in erros:
+                  print("✗", erro)
+
+              raise Exception(
+                  "Parser não conseguiu extrair "
+                  "todos os dados esperados."
+              )
+
+          print()
+          print("✓ ICAO encontrado")
+          print(
+              "✓ Pistas:",
+              len(resultado["pistas"])
+          )
+          print(
+              "✓ Frequências:",
+              len(resultado["frequencias"])
+          )
+
+          print()
+          print("========================================")
+          print("✓ PARSER AISWEB FUNCIONANDO")
           print("========================================")
 
           PY
