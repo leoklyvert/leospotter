@@ -26,9 +26,9 @@ jobs:
       - name: Baixar e processar base ANAC
         run: |
           python - <<'PY'
-          import requests
           import json
           import os
+          import urllib.request
 
           URL = (
               "https://sistemas.anac.gov.br/"
@@ -47,22 +47,22 @@ jobs:
           print(URL)
           print()
 
-          resposta = requests.get(
+          with urllib.request.urlopen(
               URL,
               timeout=120
-          )
+          ) as resposta:
 
-          resposta.raise_for_status()
+              conteudo = resposta.read()
 
           print("Download concluído.")
           print(
               "Tamanho:",
-              len(resposta.content),
+              len(conteudo),
               "bytes"
           )
 
           # A ANAC fornece o JSON com UTF-8 BOM.
-          texto = resposta.content.decode(
+          texto = conteudo.decode(
               "utf-8-sig"
           )
 
@@ -86,14 +86,14 @@ jobs:
 
           for item in dados:
 
-              icao = item.get(
-                  "CódigoOACI"
-              )
+              icao = item.get("CódigoOACI")
 
               if not icao:
                   continue
 
-              icao = str(icao).strip().upper()
+              icao = str(
+                  icao
+              ).strip().upper()
 
               registro = {
                   "icao": icao,
@@ -126,9 +126,9 @@ jobs:
                   "frequencias": []
               }
 
-              # ------------------------------------
-              # Pista 1
-              # ------------------------------------
+              # ====================================
+              # PISTA 1
+              # ====================================
 
               if item.get("Designação1"):
 
@@ -150,9 +150,9 @@ jobs:
                       )
                   })
 
-              # ------------------------------------
-              # Pista 2
-              # ------------------------------------
+              # ====================================
+              # PISTA 2
+              # ====================================
 
               if item.get("Designação2"):
 
@@ -179,7 +179,7 @@ jobs:
               )
 
           # ========================================
-          # ORDENAR POR ICAO
+          # ORDENAR
           # ========================================
 
           aeroportos.sort(
@@ -187,7 +187,7 @@ jobs:
           )
 
           # ========================================
-          # CRIAR DIRETÓRIO
+          # CRIAR DATA
           # ========================================
 
           os.makedirs(
@@ -198,7 +198,7 @@ jobs:
           caminho = "data/aeroportos.json"
 
           # ========================================
-          # SALVAR
+          # SALVAR JSON
           # ========================================
 
           with open(
@@ -218,10 +218,12 @@ jobs:
           print("========================================")
           print("BASE GERADA")
           print("========================================")
+
           print(
               "Aeroportos com ICAO:",
               len(aeroportos)
           )
+
           print(
               "Arquivo:",
               caminho
@@ -252,51 +254,18 @@ jobs:
           print("========================================")
           print()
 
-          print(
-              "ICAO:",
-              sbur["icao"]
-          )
-
-          print(
-              "CIAD:",
-              sbur["ciad"]
-          )
-
-          print(
-              "Nome:",
-              sbur["nome"]
-          )
-
-          print(
-              "Município:",
-              sbur["municipio"]
-          )
-
-          print(
-              "UF:",
-              sbur["uf"]
-          )
-
-          print(
-              "Latitude:",
-              sbur["latitude"]
-          )
-
-          print(
-              "Longitude:",
-              sbur["longitude"]
-          )
-
-          print(
-              "Elevação:",
-              sbur["elevacao"]
-          )
-
+          print("ICAO:", sbur["icao"])
+          print("CIAD:", sbur["ciad"])
+          print("Nome:", sbur["nome"])
+          print("Município:", sbur["municipio"])
+          print("UF:", sbur["uf"])
+          print("Latitude:", sbur["latitude"])
+          print("Longitude:", sbur["longitude"])
+          print("Elevação:", sbur["elevacao"])
           print(
               "Pistas cadastradas:",
               len(sbur["pistas"])
           )
-
           print(
               "Frequências:",
               len(sbur["frequencias"])
@@ -349,6 +318,7 @@ jobs:
 
           print()
           print("SBUR no arquivo final:")
+
           print(
               json.dumps(
                   sbur,
