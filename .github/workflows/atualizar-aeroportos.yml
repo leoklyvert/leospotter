@@ -1,343 +1,39 @@
-name: Atualizar base de aeroportos
+name: Descobrir base de pistas ANAC
 
 on:
   workflow_dispatch:
 
-  schedule:
-    - cron: "0 4 * * 1"
-
-permissions:
-  contents: write
-
 jobs:
-  atualizar:
+  descobrir:
     runs-on: ubuntu-latest
 
     steps:
-
-      - name: Baixar repositório
-        uses: actions/checkout@v4
-
-      - name: Configurar Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Baixar e processar base ANAC
+      - name: Consultar diretório de pistas
         run: |
           python - <<'PY'
-          import json
-          import os
           import urllib.request
 
-          URL = (
+          url = (
               "https://sistemas.anac.gov.br/"
               "dadosabertos/Aerodromos/"
               "Aer%C3%B3dromos%20P%C3%BAblicos/"
-              "Lista%20de%20aer%C3%B3dromos%20p%C3%BAblicos/"
-              "AerodromosPublicos.json"
           )
 
-          print("========================================")
-          print("ATUALIZAÇÃO DA BASE DE AEROPORTOS")
-          print("========================================")
-          print()
-
-          print("Baixando base ANAC...")
-          print(URL)
+          print("Consultando:")
+          print(url)
           print()
 
           with urllib.request.urlopen(
-              URL,
-              timeout=120
+              url,
+              timeout=60
           ) as resposta:
 
               conteudo = resposta.read()
 
-          print("Download concluído.")
           print(
-              "Tamanho:",
-              len(conteudo),
-              "bytes"
-          )
-
-          # A ANAC fornece o JSON com UTF-8 BOM.
-          texto = conteudo.decode(
-              "utf-8-sig"
-          )
-
-          dados = json.loads(texto)
-
-          if not isinstance(dados, list):
-              raise Exception(
-                  "Formato inesperado da base ANAC."
-              )
-
-          print(
-              "Registros recebidos:",
-              len(dados)
-          )
-
-          # ========================================
-          # TRANSFORMAR DADOS
-          # ========================================
-
-          aeroportos = []
-
-          for item in dados:
-
-              icao = item.get("CódigoOACI")
-
-              if not icao:
-                  continue
-
-              icao = str(
-                  icao
-              ).strip().upper()
-
-              registro = {
-                  "icao": icao,
-                  "ciad": item.get("CIAD"),
-                  "nome": item.get("Nome"),
-                  "municipio": item.get("Município"),
-                  "uf": item.get("UF"),
-                  "municipio_servido": item.get(
-                      "MunicípioServido"
-                  ),
-                  "uf_servido": item.get(
-                      "UFSERVIDO"
-                  ),
-                  "latitude": item.get(
-                      "LatGeoPoint"
-                  ),
-                  "longitude": item.get(
-                      "LonGeoPoint"
-                  ),
-                  "elevacao": item.get(
-                      "Altitude"
-                  ),
-                  "operacao_diurna": item.get(
-                      "OperaçãoDiurna"
-                  ),
-                  "operacao_noturna": item.get(
-                      "OperaçãoNoturna"
-                  ),
-                  "pistas": [],
-                  "frequencias": []
-              }
-
-              # ====================================
-              # PISTA 1
-              # ====================================
-
-              if item.get("Designação1"):
-
-                  registro["pistas"].append({
-                      "designacao": item.get(
-                          "Designação1"
-                      ),
-                      "comprimento": item.get(
-                          "Comprimento1"
-                      ),
-                      "largura": item.get(
-                          "Largura1"
-                      ),
-                      "resistencia": item.get(
-                          "Resistência1"
-                      ),
-                      "superficie": item.get(
-                          "Superfície1"
-                      )
-                  })
-
-              # ====================================
-              # PISTA 2
-              # ====================================
-
-              if item.get("Designação2"):
-
-                  registro["pistas"].append({
-                      "designacao": item.get(
-                          "Designação2"
-                      ),
-                      "comprimento": item.get(
-                          "Comprimento2"
-                      ),
-                      "largura": item.get(
-                          "Largura2"
-                      ),
-                      "resistencia": item.get(
-                          "Resistência2"
-                      ),
-                      "superficie": item.get(
-                          "Superfície2"
-                      )
-                  })
-
-              aeroportos.append(
-                  registro
-              )
-
-          # ========================================
-          # ORDENAR
-          # ========================================
-
-          aeroportos.sort(
-              key=lambda item: item["icao"]
-          )
-
-          # ========================================
-          # CRIAR DATA
-          # ========================================
-
-          os.makedirs(
-              "data",
-              exist_ok=True
-          )
-
-          caminho = "data/aeroportos.json"
-
-          # ========================================
-          # SALVAR JSON
-          # ========================================
-
-          with open(
-              caminho,
-              "w",
-              encoding="utf-8"
-          ) as arquivo:
-
-              json.dump(
-                  aeroportos,
-                  arquivo,
-                  ensure_ascii=False,
-                  indent=2
-              )
-
-          print()
-          print("========================================")
-          print("BASE GERADA")
-          print("========================================")
-
-          print(
-              "Aeroportos com ICAO:",
-              len(aeroportos)
-          )
-
-          print(
-              "Arquivo:",
-              caminho
-          )
-
-          # ========================================
-          # TESTE SBUR
-          # ========================================
-
-          sbur = next(
-              (
-                  aeroporto
-                  for aeroporto in aeroportos
-                  if aeroporto["icao"] == "SBUR"
-              ),
-              None
-          )
-
-          if sbur is None:
-
-              raise Exception(
-                  "SBUR não encontrada na base."
-              )
-
-          print()
-          print("========================================")
-          print("TESTE SBUR")
-          print("========================================")
-          print()
-
-          print("ICAO:", sbur["icao"])
-          print("CIAD:", sbur["ciad"])
-          print("Nome:", sbur["nome"])
-          print("Município:", sbur["municipio"])
-          print("UF:", sbur["uf"])
-          print("Latitude:", sbur["latitude"])
-          print("Longitude:", sbur["longitude"])
-          print("Elevação:", sbur["elevacao"])
-          print(
-              "Pistas cadastradas:",
-              len(sbur["pistas"])
-          )
-          print(
-              "Frequências:",
-              len(sbur["frequencias"])
-          )
-
-          print()
-          print("✓ SBUR encontrada")
-          print("✓ Base processada")
-          print("✓ aeroportos.json gerado")
-
-          PY
-
-      - name: Verificar arquivo
-        run: |
-          echo "========================================"
-          echo "VERIFICAÇÃO DO ARQUIVO"
-          echo "========================================"
-
-          test -f data/aeroportos.json
-
-          python - <<'PY'
-          import json
-
-          with open(
-              "data/aeroportos.json",
-              "r",
-              encoding="utf-8"
-          ) as arquivo:
-
-              dados = json.load(arquivo)
-
-          print(
-              "Registros no arquivo:",
-              len(dados)
-          )
-
-          sbur = next(
-              (
-                  item
-                  for item in dados
-                  if item["icao"] == "SBUR"
-              ),
-              None
-          )
-
-          if sbur is None:
-              raise Exception(
-                  "SBUR não está no arquivo final."
-              )
-
-          print()
-          print("SBUR no arquivo final:")
-
-          print(
-              json.dumps(
-                  sbur,
-                  ensure_ascii=False,
-                  indent=2
+              conteudo.decode(
+                  "utf-8-sig",
+                  errors="replace"
               )
           )
           PY
-
-      - name: Salvar alterações
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          git add data/aeroportos.json
-
-          if git diff --cached --quiet; then
-            echo "Nenhuma alteração na base."
-          else
-            git commit -m "Atualiza base de aeroportos"
-            git push
-          fi
