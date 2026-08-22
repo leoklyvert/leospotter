@@ -1,4 +1,4 @@
-name: Descobrir base de pistas ANAC
+name: Descobrir arquivos de pistas ANAC
 
 on:
   workflow_dispatch:
@@ -17,6 +17,7 @@ jobs:
               "https://sistemas.anac.gov.br/"
               "dadosabertos/Aerodromos/"
               "Aer%C3%B3dromos%20P%C3%BAblicos/"
+              "Pistas%20de%20Pouso%20e%20Decolagem/"
           )
 
           print("Consultando:")
