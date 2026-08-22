@@ -121,13 +121,9 @@ function pesquisarAeronave() {
         );
 
 
-    resultado.classList.add(
-        "hidden"
-    );
+    resultado.classList.add("hidden");
 
-    naoEncontrada.classList.add(
-        "hidden"
-    );
+    naoEncontrada.classList.add("hidden");
 
 
     if (!matricula) {
@@ -249,7 +245,7 @@ function mostrarAeronave(aeronave) {
 
 
 // ==========================================
-// AERONAVE NÃO ENCONTRADA
+// NÃO ENCONTRADA
 // ==========================================
 
 function mostrarNaoEncontrada(
@@ -276,7 +272,7 @@ function mostrarNaoEncontrada(
 
 
 // ==========================================
-// BOTÃO PESQUISAR
+// PESQUISA
 // ==========================================
 
 btnPesquisar.addEventListener(
@@ -285,17 +281,11 @@ btnPesquisar.addEventListener(
 );
 
 
-// ==========================================
-// TECLA ENTER
-// ==========================================
-
 campoMatricula.addEventListener(
     "keydown",
     function(event) {
 
-        if (
-            event.key === "Enter"
-        ) {
+        if (event.key === "Enter") {
 
             pesquisarAeronave();
 
@@ -421,18 +411,14 @@ if (btnCancelarFoto) {
 
     btnCancelarFoto.addEventListener(
         "click",
-        function() {
-
-            limparFormularioFoto();
-
-        }
+        limparFormularioFoto
     );
 
 }
 
 
 // ==========================================
-// CAMPO ICAO
+// ICAO
 // ==========================================
 
 if (campoLocalFoto) {
@@ -454,7 +440,7 @@ if (campoLocalFoto) {
 
 
 // ==========================================
-// PREVISUALIZAÇÃO DA FOTO
+// PREVIEW
 // ==========================================
 
 if (campoFoto) {
@@ -550,10 +536,6 @@ function salvarFoto() {
     }
 
 
-    // ======================================
-    // VALIDAR ICAO
-    // ======================================
-
     const icao =
         campoLocalFoto.value
             .trim()
@@ -609,11 +591,30 @@ function salvarFoto() {
             );
 
 
-            salvarFotosNoNavegador();
+            try {
+
+                salvarFotosNoNavegador();
+
+            }
+
+            catch (erro) {
+
+                console.error(
+                    erro
+                );
+
+                alert(
+                    "A fotografia é grande demais para o armazenamento temporário do navegador."
+                );
+
+                fotosAeronave.pop();
+
+                return;
+
+            }
 
 
             atualizarFotos();
-
 
             limparFormularioFoto();
 
@@ -633,7 +634,7 @@ function salvarFoto() {
 
 
 // ==========================================
-// CHAVE DO LOCALSTORAGE
+// CHAVE LOCALSTORAGE
 // ==========================================
 
 function obterChaveFotos(
@@ -707,7 +708,7 @@ function carregarFotosAeronave(
 
 
 // ==========================================
-// SALVAR NO NAVEGADOR
+// SALVAR FOTOS
 // ==========================================
 
 function salvarFotosNoNavegador() {
@@ -736,7 +737,7 @@ function salvarFotosNoNavegador() {
 
 
 // ==========================================
-// ATUALIZAR CONTADORES
+// ATUALIZAR GALERIA
 // ==========================================
 
 function atualizarFotos() {
@@ -748,50 +749,405 @@ function atualizarFotos() {
     if (contadorFotos) {
 
         contadorFotos.textContent =
-            quantidade +
-            (
-                quantidade === 1
-                    ? " foto"
-                    : " fotos"
-            );
+            quantidade === 1
+                ? "1 foto"
+                : `${quantidade} fotos`;
 
     }
 
 
-    if (totalFotos) {
-
-        totalFotos.textContent =
-            calcularTotalFotos()
-                .toLocaleString(
-                    "pt-BR"
-                );
-
-    }
+    atualizarTotalFotos();
 
 
     if (quantidade === 0) {
 
-        if (semFotos) {
+        semFotos.classList.remove(
+            "hidden"
+        );
 
-            semFotos.classList.remove(
-                "hidden"
+        removerGaleria();
+
+        return;
+
+    }
+
+
+    semFotos.classList.add(
+        "hidden"
+    );
+
+
+    criarGaleria();
+
+}
+
+
+// ==========================================
+// CRIAR GALERIA
+// ==========================================
+
+function criarGaleria() {
+
+    removerGaleria();
+
+
+    const galeria =
+        document.createElement(
+            "div"
+        );
+
+
+    galeria.id =
+        "galeriaFotos";
+
+
+    galeria.className =
+        "galeria-fotos";
+
+
+    fotosAeronave.forEach(
+        function(foto) {
+
+            const card =
+                document.createElement(
+                    "article"
+                );
+
+
+            card.className =
+                "foto-card";
+
+
+            const imagem =
+                document.createElement(
+                    "img"
+                );
+
+
+            imagem.src =
+                foto.imagem;
+
+
+            imagem.alt =
+                `Fotografia ${foto.matricula}`;
+
+
+            imagem.className =
+                "foto-miniatura";
+
+
+            imagem.loading =
+                "lazy";
+
+
+            imagem.addEventListener(
+                "click",
+                function() {
+
+                    abrirFoto(
+                        foto
+                    );
+
+                }
+            );
+
+
+            const informacoes =
+                document.createElement(
+                    "div"
+                );
+
+
+            informacoes.className =
+                "foto-informacoes";
+
+
+            const matricula =
+                document.createElement(
+                    "strong"
+                );
+
+
+            matricula.textContent =
+                foto.matricula;
+
+
+            const local =
+                document.createElement(
+                    "span"
+                );
+
+
+            local.className =
+                "foto-icao";
+
+
+            local.textContent =
+                foto.icao;
+
+
+            const data =
+                document.createElement(
+                    "span"
+                );
+
+
+            data.className =
+                "foto-data";
+
+
+            data.textContent =
+                formatarData(
+                    foto.data
+                );
+
+
+            informacoes.appendChild(
+                matricula
+            );
+
+
+            informacoes.appendChild(
+                local
+            );
+
+
+            informacoes.appendChild(
+                data
+            );
+
+
+            if (foto.observacao) {
+
+                const observacao =
+                    document.createElement(
+                        "p"
+                    );
+
+
+                observacao.textContent =
+                    foto.observacao;
+
+
+                informacoes.appendChild(
+                    observacao
+                );
+
+            }
+
+
+            const excluir =
+                document.createElement(
+                    "button"
+                );
+
+
+            excluir.type =
+                "button";
+
+
+            excluir.className =
+                "btn-excluir-foto";
+
+
+            excluir.textContent =
+                "Excluir";
+
+
+            excluir.addEventListener(
+                "click",
+                function(event) {
+
+                    event.stopPropagation();
+
+                    excluirFoto(
+                        foto.id
+                    );
+
+                }
+            );
+
+
+            informacoes.appendChild(
+                excluir
+            );
+
+
+            card.appendChild(
+                imagem
+            );
+
+
+            card.appendChild(
+                informacoes
+            );
+
+
+            galeria.appendChild(
+                card
             );
 
         }
+    );
+
+
+    const container =
+        document.querySelector(
+            ".minhas-fotos"
+        );
+
+
+    if (container) {
+
+        container.appendChild(
+            galeria
+        );
 
     }
 
-    else {
+}
 
-        if (semFotos) {
 
-            semFotos.classList.add(
-                "hidden"
-            );
+// ==========================================
+// REMOVER GALERIA
+// ==========================================
+
+function removerGaleria() {
+
+    const galeria =
+        document.getElementById(
+            "galeriaFotos"
+        );
+
+
+    if (galeria) {
+
+        galeria.remove();
+
+    }
+
+}
+
+
+// ==========================================
+// FORMATAR DATA
+// ==========================================
+
+function formatarData(data) {
+
+    if (!data) {
+
+        return "Data não informada";
+
+    }
+
+
+    const partes =
+        data.split("-");
+
+
+    if (partes.length !== 3) {
+
+        return data;
+
+    }
+
+
+    return (
+        partes[2] +
+        "/" +
+        partes[1] +
+        "/" +
+        partes[0]
+    );
+
+}
+
+
+// ==========================================
+// ABRIR FOTO
+// ==========================================
+
+function abrirFoto(foto) {
+
+    const janela =
+        document.createElement(
+            "div"
+        );
+
+
+    janela.className =
+        "visualizador-foto";
+
+
+    const imagem =
+        document.createElement(
+            "img"
+        );
+
+
+    imagem.src =
+        foto.imagem;
+
+
+    imagem.alt =
+        foto.matricula;
+
+
+    janela.appendChild(
+        imagem
+    );
+
+
+    janela.addEventListener(
+        "click",
+        function() {
+
+            janela.remove();
 
         }
+    );
+
+
+    document.body.appendChild(
+        janela
+    );
+
+}
+
+
+// ==========================================
+// EXCLUIR FOTO
+// ==========================================
+
+function excluirFoto(id) {
+
+    const confirmar =
+        confirm(
+            "Deseja realmente excluir esta fotografia?"
+        );
+
+
+    if (!confirmar) {
+
+        return;
 
     }
+
+
+    fotosAeronave =
+        fotosAeronave.filter(
+            function(foto) {
+
+                return foto.id !== id;
+
+            }
+        );
+
+
+    salvarFotosNoNavegador();
+
+    atualizarFotos();
 
 }
 
@@ -800,7 +1156,14 @@ function atualizarFotos() {
 // TOTAL DE FOTOS
 // ==========================================
 
-function calcularTotalFotos() {
+function atualizarTotalFotos() {
+
+    if (!totalFotos) {
+
+        return;
+
+    }
+
 
     let total = 0;
 
@@ -860,14 +1223,17 @@ function calcularTotalFotos() {
     catch (erro) {
 
         console.error(
-            "Erro ao calcular fotos:",
+            "Erro ao calcular total:",
             erro
         );
 
     }
 
 
-    return total;
+    totalFotos.textContent =
+        total.toLocaleString(
+            "pt-BR"
+        );
 
 }
 
