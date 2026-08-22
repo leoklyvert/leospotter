@@ -165,9 +165,11 @@ function normalizarMatricula(matricula) {
 function normalizarIcao(icao) {
 
     return String(icao || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
         .trim()
         .toUpperCase()
-        .replace(/[^A-Z]/g, "")
+        .replace(/[^A-Z0-9]/g, "")
         .substring(0, 4);
 
 }
@@ -320,16 +322,11 @@ function pesquisarAerodromo() {
         campoIcao.value
     );
 
-
     // Limpa resultados anteriores
-
     resultadoAerodromo.classList.add("hidden");
-
     aerodromoNaoEncontrado.classList.add("hidden");
 
-
     // ICAO vazio
-
     if (!icaoDigitado) {
 
         campoIcao.focus();
@@ -338,21 +335,30 @@ function pesquisarAerodromo() {
 
     }
 
+    console.log("Pesquisando aeródromo:", icaoDigitado);
+    console.log("Total de aeródromos carregados:", aerodromos.length);
 
-    // Pesquisa na base
-
+    // Pesquisa robusta
     const aero = aerodromos.find(function(item) {
 
-        return (
-            normalizarIcao(item.icao) ===
-            icaoDigitado
+        if (!item) {
+            return false;
+        }
+
+        const codigoBase = normalizarIcao(
+            item.icao ||
+            item.codigo_icao ||
+            item.codigo ||
+            ""
         );
+
+        return codigoBase === icaoDigitado;
 
     });
 
+    console.log("Resultado da pesquisa:", aero);
 
     // Encontrado
-
     if (aero) {
 
         mostrarAerodromo(aero);
@@ -360,7 +366,6 @@ function pesquisarAerodromo() {
     }
 
     // Não encontrado
-
     else {
 
         document.getElementById(
@@ -379,7 +384,6 @@ function pesquisarAerodromo() {
     }
 
 }
-
 
 // ==========================================
 // MOSTRAR AERÓDROMO
