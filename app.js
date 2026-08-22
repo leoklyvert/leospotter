@@ -1,1563 +1,590 @@
-// ==========================================
-// LeoSpotter
-// Pesquisa de aeronaves + Acervo fotográfico
-// Base RAB / ANAC
-//
-// VERSÃO: 1.1.0
-// ==========================================
+<!DOCTYPE html>
 
+<html lang="pt-BR">
 
-// ==========================================
-// VERSÃO DO SITE
-// ==========================================
+<head>
 
-const VERSAO_SITE = "1.1.0";
+```
+<meta charset="UTF-8">
 
+<meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+>
 
-// ==========================================
-// VARIÁVEIS
-// ==========================================
+<meta
+    name="description"
+    content="LeoSpotter - Banco pessoal de aeronaves fotografadas"
+>
 
-let aeronaves = [];
+<meta
+    name="theme-color"
+    content="#0b3d91"
+>
 
-let aeronaveAtual = null;
+<title>LeoSpotter</title>
 
-let fotosAeronave = [];
+<link
+    rel="stylesheet"
+    href="style.css"
+>
+```
 
+</head>
 
-// ==========================================
-// ELEMENTOS DA PÁGINA
-// ==========================================
+<body>
 
-const campoMatricula =
-    document.getElementById("matricula");
+```
+<!-- ==========================================
+     CABEÇALHO
+     ========================================== -->
 
-const btnPesquisar =
-    document.getElementById("btnPesquisar");
+<header class="topo">
 
-const resultado =
-    document.getElementById("resultado");
+    <div class="logo-area">
 
-const naoEncontrada =
-    document.getElementById("naoEncontrada");
+        <img
+            src="imagens/logo-leospotter.jpg"
+            alt="LeoSpotter"
+            class="logo"
+        >
 
+        <div>
 
-// ==========================================
-// ELEMENTOS DAS ESTATÍSTICAS
-// ==========================================
+            <h1>LeoSpotter</h1>
 
-const totalAeronaves =
-    document.getElementById(
-        "totalAeronaves"
-    );
+            <p>
+                Seu banco pessoal de aeronaves
+            </p>
 
+        </div>
 
-const totalFotos =
-    document.getElementById(
-        "totalFotos"
-    );
+    </div>
 
+</header>
 
-const aeronavesComFotos =
-    document.getElementById(
-        "aeronavesComFotos"
-    );
 
 
-// ==========================================
-// VERSÃO NO RODAPÉ
-// ==========================================
+<main class="container">
 
-function atualizarVersaoSite() {
 
-    const elemento =
-        document.getElementById(
-            "versaoSite"
-        );
+    <!-- ==========================================
+         PESQUISA
+         ========================================== -->
 
+    <section class="pesquisa-card">
 
-    if (elemento) {
+        <h2>
+            Pesquisar aeronave
+        </h2>
 
-        elemento.textContent =
-            `v${VERSAO_SITE}`;
+        <p class="descricao">
+            Digite a matrícula da aeronave para
+            consultar seus dados.
+        </p>
 
-    }
 
-}
+        <div class="campo-pesquisa">
 
+            <input
+                type="text"
+                id="matricula"
+                placeholder="Ex.: PS-BZR"
+                maxlength="10"
+                autocomplete="off"
+                spellcheck="false"
+            >
 
-// ==========================================
-// CARREGAR BASE RAB
-// ==========================================
 
-async function carregarAeronaves() {
+            <button id="btnPesquisar">
+                Pesquisar
+            </button>
 
-    try {
+        </div>
 
-        const resposta =
-            await fetch(
-                "data/aeronaves.json"
-            );
 
+        <p class="dica">
 
-        if (!resposta.ok) {
+            Matrícula de teste:
+            <strong>PS-BZR</strong>
 
-            throw new Error(
-                "Não foi possível carregar a base."
-            );
+        </p>
 
-        }
+    </section>
 
 
-        aeronaves =
-            await resposta.json();
 
+    <!-- ==========================================
+         RESULTADO DA PESQUISA
+         ========================================== -->
 
-        console.log(
-            `Base carregada: ${aeronaves.length} aeronave(s)`
-        );
+    <section
+        id="resultado"
+        class="resultado hidden"
+    >
 
 
-        // ======================================
-        // ESTATÍSTICA
-        // ======================================
-        //
-        // Não mostramos mais o total do RAB
-        // como "Aeronaves".
-        //
-        // A estatística principal agora é:
-        //
-        // Aeronaves com fotos
-        //
-        // ======================================
+        <!-- CABEÇALHO DA AERONAVE -->
 
-        atualizarEstatisticasFotos();
+        <div class="resultado-header">
 
+            <div>
 
-    }
+                <span class="etiqueta">
+                    AERONAVE ENCONTRADA
+                </span>
 
-    catch (erro) {
 
-        console.error(
-            "Erro ao carregar base:",
-            erro
-        );
+                <h2 id="resultadoMatricula">
+                    PS-BZR
+                </h2>
 
-    }
 
-}
+                <p id="resultadoModelo">
+                    F33A
+                </p>
 
+            </div>
 
-// ==========================================
-// NORMALIZAR MATRÍCULA
-// ==========================================
 
-function normalizarMatricula(
-    matricula
-) {
+            <div class="status">
+                ✓ Encontrada
+            </div>
 
-    return matricula
-        .trim()
-        .toUpperCase()
-        .replace(/-/g, "");
+        </div>
 
-}
 
 
-// ==========================================
-// PESQUISAR AERONAVE
-// ==========================================
+        <!-- ==========================================
+             DADOS DA AERONAVE
+             ========================================== -->
 
-function pesquisarAeronave() {
+        <div class="dados-aeronave">
 
-    const matriculaDigitada =
-        campoMatricula.value;
 
+            <div class="dado">
 
-    const matricula =
-        normalizarMatricula(
-            matriculaDigitada
-        );
+                <span>
+                    Fabricante
+                </span>
 
+                <strong id="fabricante">
+                    —
+                </strong>
 
-    resultado.classList.add(
-        "hidden"
-    );
+            </div>
 
 
-    naoEncontrada.classList.add(
-        "hidden"
-    );
+            <div class="dado">
 
+                <span>
+                    Modelo
+                </span>
 
-    if (!matricula) {
+                <strong id="modelo">
+                    —
+                </strong>
 
-        campoMatricula.focus();
+            </div>
 
-        return;
 
-    }
+            <div class="dado">
 
+                <span>
+                    Nº de série
+                </span>
 
-    const aeronave =
-        aeronaves.find(
-            function(item) {
+                <strong id="numeroSerie">
+                    —
+                </strong>
 
-                return normalizarMatricula(
-                    item.matricula
-                ) === matricula;
+            </div>
 
-            }
-        );
 
+            <div class="dado">
 
-    if (aeronave) {
+                <span>
+                    Ano de fabricação
+                </span>
 
-        mostrarAeronave(
-            aeronave
-        );
+                <strong id="ano">
+                    —
+                </strong>
 
-    }
+            </div>
 
-    else {
 
-        mostrarNaoEncontrada(
-            matriculaDigitada
-                .trim()
-                .toUpperCase()
-        );
+            <div class="dado">
 
-    }
+                <span>
+                    Tipo ICAO
+                </span>
 
-}
+                <strong id="tipoIcao">
+                    —
+                </strong>
 
+            </div>
 
-// ==========================================
-// MOSTRAR AERONAVE
-// ==========================================
 
-function mostrarAeronave(
-    aeronave
-) {
+            <div class="dado">
 
-    aeronaveAtual =
-        aeronave;
+                <span>
+                    Situação
+                </span>
 
+                <strong id="situacao">
+                    —
+                </strong>
 
-    document.getElementById(
-        "resultadoMatricula"
-    ).textContent =
-        aeronave.matricula || "—";
+            </div>
 
+        </div>
 
-    document.getElementById(
-        "resultadoModelo"
-    ).textContent =
-        aeronave.modelo || "—";
 
 
-    document.getElementById(
-        "fabricante"
-    ).textContent =
-        aeronave.fabricante || "—";
+        <!-- ==========================================
+             MEU ACERVO
+             ========================================== -->
 
+        <div class="minhas-fotos">
 
-    document.getElementById(
-        "modelo"
-    ).textContent =
-        aeronave.modelo || "—";
 
+            <div class="secao-titulo">
 
-    document.getElementById(
-        "numeroSerie"
-    ).textContent =
-        aeronave.numero_serie || "—";
+                <div>
 
+                    <span class="etiqueta">
+                        MEU ACERVO
+                    </span>
 
-    document.getElementById(
-        "ano"
-    ).textContent =
-        aeronave.ano_fabricacao || "—";
+                    <h3>
+                        Minhas fotografias
+                    </h3>
 
+                </div>
 
-    document.getElementById(
-        "tipoIcao"
-    ).textContent =
-        aeronave.tipo_icao || "—";
 
+                <span
+                    id="contadorFotos"
+                    class="contador-fotos"
+                >
+                    0 fotos
+                </span>
 
-    document.getElementById(
-        "situacao"
-    ).textContent =
-        aeronave.situacao || "—";
+            </div>
 
 
-    carregarFotosAeronave(
-        aeronave.matricula
-    );
 
+            <!-- ==========================================
+                 SEM FOTOS
+                 ========================================== -->
 
-    resultado.classList.remove(
-        "hidden"
-    );
+            <div
+                id="semFotos"
+                class="sem-fotos"
+            >
 
+                <div class="icone-camera">
+                    📷
+                </div>
 
-    resultado.scrollIntoView({
-        behavior: "smooth",
-        block: "start"
-    });
 
-}
+                <h4>
+                    Nenhuma fotografia cadastrada
+                </h4>
 
 
-// ==========================================
-// NÃO ENCONTRADA
-// ==========================================
+                <p>
+                    Adicione suas fotografias desta
+                    aeronave ao seu acervo.
+                </p>
 
-function mostrarNaoEncontrada(
-    matricula
-) {
 
-    document.getElementById(
-        "matriculaNaoEncontrada"
-    ).textContent =
-        matricula;
+                <button
+                    type="button"
+                    id="btnAdicionarFoto"
+                    class="btn-secundario"
+                >
+                    + Adicionar fotografia
+                </button>
 
+            </div>
 
-    naoEncontrada.classList.remove(
-        "hidden"
-    );
 
 
-    naoEncontrada.scrollIntoView({
-        behavior: "smooth",
-        block: "center"
-    });
+            <!-- ==========================================
+                 FORMULÁRIO DE FOTOGRAFIA
+                 ========================================== -->
 
-}
+            <div
+                id="formularioFoto"
+                class="formulario-foto hidden"
+            >
 
 
-// ==========================================
-// PESQUISA
-// ==========================================
+                <h3>
+                    Adicionar fotografia
+                </h3>
 
-if (btnPesquisar) {
 
-    btnPesquisar.addEventListener(
-        "click",
-        pesquisarAeronave
-    );
+                <!-- FOTO -->
 
-}
+                <div class="campo-formulario">
 
+                    <label for="foto">
+                        Fotografia
+                    </label>
 
-if (campoMatricula) {
 
-    campoMatricula.addEventListener(
-        "keydown",
-        function(event) {
+                    <input
+                        type="file"
+                        id="foto"
+                        accept="image/jpeg,image/png,image/webp"
+                    >
 
-            if (
-                event.key === "Enter"
-            ) {
+                </div>
 
-                pesquisarAeronave();
 
-            }
 
-        }
-    );
+                <!-- PREVIEW -->
 
-}
+                <div
+                    id="previewFoto"
+                    class="preview-foto hidden"
+                >
 
+                    <img
+                        id="imagemPreview"
+                        src=""
+                        alt="Pré-visualização da fotografia"
+                    >
 
-// ==========================================
-// ELEMENTOS DO ACERVO
-// ==========================================
+                </div>
 
-const btnAdicionarFoto =
-    document.getElementById(
-        "btnAdicionarFoto"
-    );
 
 
-const formularioFoto =
-    document.getElementById(
-        "formularioFoto"
-    );
+                <!-- DATA -->
 
+                <div class="campo-formulario">
 
-const btnCancelarFoto =
-    document.getElementById(
-        "btnCancelarFoto"
-    );
+                    <label for="dataFoto">
+                        Data da foto
+                    </label>
 
 
-const btnSalvarFoto =
-    document.getElementById(
-        "btnSalvarFoto"
-    );
+                    <input
+                        type="date"
+                        id="dataFoto"
+                    >
 
+                </div>
 
-const campoFoto =
-    document.getElementById(
-        "foto"
-    );
 
 
-const campoDataFoto =
-    document.getElementById(
-        "dataFoto"
-    );
+                <!-- AERÓDROMO -->
 
+                <div class="campo-formulario">
 
-const campoLocalFoto =
-    document.getElementById(
-        "localFoto"
-    );
+                    <label for="localFoto">
+                        Aeródromo (ICAO)
+                    </label>
 
 
-const campoObservacaoFoto =
-    document.getElementById(
-        "observacaoFoto"
-    );
+                    <input
+                        type="text"
+                        id="localFoto"
+                        placeholder="Ex.: SBUR"
+                        maxlength="4"
+                        autocomplete="off"
+                        spellcheck="false"
+                    >
 
 
-const previewFoto =
-    document.getElementById(
-        "previewFoto"
-    );
+                    <small>
+                        Informe o código ICAO do aeródromo.
+                    </small>
 
+                </div>
 
-const imagemPreview =
-    document.getElementById(
-        "imagemPreview"
-    );
 
 
-const semFotos =
-    document.getElementById(
-        "semFotos"
-    );
+                <!-- OBSERVAÇÃO -->
 
+                <div class="campo-formulario">
 
-const contadorFotos =
-    document.getElementById(
-        "contadorFotos"
-    );
+                    <label for="observacaoFoto">
+                        Observação
+                    </label>
 
 
-// ==========================================
-// ABRIR FORMULÁRIO
-// ==========================================
+                    <textarea
+                        id="observacaoFoto"
+                        rows="3"
+                        placeholder="Ex.: Fotografada durante o movimento no aeroporto."
+                    ></textarea>
 
-if (btnAdicionarFoto) {
+                </div>
 
-    btnAdicionarFoto.addEventListener(
-        "click",
-        function() {
 
-            formularioFoto.classList.remove(
-                "hidden"
-            );
 
+                <!-- BOTÕES -->
 
-            semFotos.classList.add(
-                "hidden"
-            );
+                <div class="acoes-formulario">
 
 
-            campoFoto.focus();
+                    <button
+                        type="button"
+                        id="btnCancelarFoto"
+                        class="btn-cancelar"
+                    >
+                        Cancelar
+                    </button>
 
-        }
-    );
 
-}
+                    <button
+                        type="button"
+                        id="btnSalvarFoto"
+                        class="btn-salvar"
+                    >
+                        Salvar
+                    </button>
 
+                </div>
 
-// ==========================================
-// CANCELAR
-// ==========================================
+            </div>
 
-if (btnCancelarFoto) {
+        </div>
 
-    btnCancelarFoto.addEventListener(
-        "click",
-        limparFormularioFoto
-    );
+    </section>
 
-}
 
 
-// ==========================================
-// ICAO
-// ==========================================
+    <!-- ==========================================
+         AERONAVE NÃO ENCONTRADA
+         ========================================== -->
 
-if (campoLocalFoto) {
+    <section
+        id="naoEncontrada"
+        class="nao-encontrada hidden"
+    >
 
-    campoLocalFoto.addEventListener(
-        "input",
-        function() {
+        <div class="icone-alerta">
+            🔎
+        </div>
 
-            campoLocalFoto.value =
-                campoLocalFoto.value
-                    .toUpperCase()
-                    .replace(
-                        /[^A-Z]/g,
-                        ""
-                    )
-                    .substring(
-                        0,
-                        4
-                    );
 
-        }
-    );
+        <h3>
+            Aeronave não encontrada
+        </h3>
 
-}
 
+        <p>
 
-// ==========================================
-// PREVIEW
-// ==========================================
+            Não encontramos a matrícula
 
-if (campoFoto) {
+            <strong
+                id="matriculaNaoEncontrada"
+            ></strong>
 
-    campoFoto.addEventListener(
-        "change",
-        function() {
+            na base de aeronaves.
 
-            const arquivo =
-                campoFoto.files[0];
+        </p>
 
+    </section>
 
-            if (!arquivo) {
 
-                previewFoto.classList.add(
-                    "hidden"
-                );
 
-                return;
+    <!-- ==========================================
+         ESTATÍSTICAS DO ACERVO
+         ========================================== -->
 
-            }
+    <section class="estatisticas">
 
 
-            const leitor =
-                new FileReader();
+        <!-- AERONAVES COM FOTOS -->
 
+        <div class="estatistica">
 
-            leitor.onload =
-                function(event) {
+            <span class="estatistica-icone">
+                ✈️
+            </span>
 
-                    imagemPreview.src =
-                        event.target.result;
 
+            <div>
 
-                    previewFoto.classList.remove(
-                        "hidden"
-                    );
+                <strong id="aeronavesComFotos">
+                    0
+                </strong>
 
-                };
+                <span>
+                    Aeronaves com fotos
+                </span>
 
+            </div>
 
-            leitor.readAsDataURL(
-                arquivo
-            );
+        </div>
 
-        }
-    );
 
-}
 
+        <!-- TOTAL DE FOTOGRAFIAS -->
 
-// ==========================================
-// SALVAR FOTO
-// ==========================================
+        <div class="estatistica">
 
-if (btnSalvarFoto) {
+            <span class="estatistica-icone">
+                📷
+            </span>
 
-    btnSalvarFoto.addEventListener(
-        "click",
-        salvarFoto
-    );
 
-}
+            <div>
 
+                <strong id="totalFotos">
+                    0
+                </strong>
 
-function salvarFoto() {
+                <span>
+                    Fotografias
+                </span>
 
-    if (!aeronaveAtual) {
+            </div>
 
-        alert(
-            "Pesquise uma aeronave primeiro."
-        );
+        </div>
 
-        return;
+    </section>
 
-    }
+</main>
 
 
-    const arquivo =
-        campoFoto.files[0];
 
+<!-- ==========================================
+     RODAPÉ
+     ========================================== -->
 
-    if (!arquivo) {
+<footer>
 
-        alert(
-            "Selecione uma fotografia."
-        );
+    <p>
 
-        campoFoto.focus();
+        LeoSpotter
 
-        return;
+        <span>•</span>
 
-    }
+        Projeto em desenvolvimento
 
+        <span>•</span>
 
-    const icao =
-        campoLocalFoto.value
-            .trim()
-            .toUpperCase();
+        <span id="versaoSite">
+            v1.1.1
+        </span>
 
+    </p>
 
-    if (
-        !/^[A-Z]{4}$/.test(
-            icao
-        )
-    ) {
+</footer>
 
-        alert(
-            "Informe um código ICAO válido com 4 letras.\n\nExemplo: SBUR"
-        );
 
-        campoLocalFoto.focus();
 
-        return;
+<script src="app.js"></script>
+```
 
-    }
+</body>
 
-
-    const leitor =
-        new FileReader();
-
-
-    leitor.onload =
-        function(event) {
-
-            const novaFoto = {
-
-                id:
-                    Date.now(),
-
-                matricula:
-                    aeronaveAtual.matricula,
-
-                imagem:
-                    event.target.result,
-
-                data:
-                    campoDataFoto.value,
-
-                icao:
-                    icao,
-
-                observacao:
-                    campoObservacaoFoto.value
-                        .trim()
-
-            };
-
-
-            fotosAeronave.push(
-                novaFoto
-            );
-
-
-            try {
-
-                salvarFotosNoNavegador();
-
-            }
-
-            catch (erro) {
-
-                console.error(
-                    erro
-                );
-
-
-                alert(
-                    "A fotografia é grande demais para o armazenamento temporário do navegador."
-                );
-
-
-                fotosAeronave.pop();
-
-                return;
-
-            }
-
-
-            atualizarFotos();
-
-
-            atualizarEstatisticasFotos();
-
-
-            limparFormularioFoto();
-
-
-            alert(
-                "Fotografia adicionada com sucesso!"
-            );
-
-        };
-
-
-    leitor.readAsDataURL(
-        arquivo
-    );
-
-}
-
-
-// ==========================================
-// CHAVE LOCALSTORAGE
-// ==========================================
-
-function obterChaveFotos(
-    matricula
-) {
-
-    return (
-        "leospotter_fotos_" +
-        normalizarMatricula(
-            matricula
-        )
-    );
-
-}
-
-
-// ==========================================
-// CARREGAR FOTOS
-// ==========================================
-
-function carregarFotosAeronave(
-    matricula
-) {
-
-    const chave =
-        obterChaveFotos(
-            matricula
-        );
-
-
-    const dados =
-        localStorage.getItem(
-            chave
-        );
-
-
-    if (dados) {
-
-        try {
-
-            fotosAeronave =
-                JSON.parse(
-                    dados
-                );
-
-
-            if (
-                !Array.isArray(
-                    fotosAeronave
-                )
-            ) {
-
-                fotosAeronave = [];
-
-            }
-
-        }
-
-        catch (erro) {
-
-            console.error(
-                "Erro ao carregar fotos:",
-                erro
-            );
-
-
-            fotosAeronave = [];
-
-        }
-
-    }
-
-    else {
-
-        fotosAeronave = [];
-
-    }
-
-
-    atualizarFotos();
-
-}
-
-
-// ==========================================
-// SALVAR FOTOS
-// ==========================================
-
-function salvarFotosNoNavegador() {
-
-    if (!aeronaveAtual) {
-
-        return;
-
-    }
-
-
-    const chave =
-        obterChaveFotos(
-            aeronaveAtual.matricula
-        );
-
-
-    localStorage.setItem(
-        chave,
-        JSON.stringify(
-            fotosAeronave
-        )
-    );
-
-}
-
-
-// ==========================================
-// ATUALIZAR GALERIA
-// ==========================================
-
-function atualizarFotos() {
-
-    const quantidade =
-        fotosAeronave.length;
-
-
-    if (contadorFotos) {
-
-        contadorFotos.textContent =
-            quantidade === 1
-                ? "1 foto"
-                : `${quantidade} fotos`;
-
-    }
-
-
-    atualizarEstatisticasFotos();
-
-
-    if (quantidade === 0) {
-
-        if (semFotos) {
-
-            semFotos.classList.remove(
-                "hidden"
-            );
-
-        }
-
-
-        removerGaleria();
-
-        return;
-
-    }
-
-
-    if (semFotos) {
-
-        semFotos.classList.add(
-            "hidden"
-        );
-
-    }
-
-
-    criarGaleria();
-
-}
-
-
-// ==========================================
-// ESTATÍSTICAS DAS FOTOS
-// ==========================================
-//
-// Conta:
-// 1. total de fotografias
-// 2. quantidade de aeronaves únicas
-//    que possuem pelo menos uma fotografia
-//
-// Exemplo:
-//
-// PT-ABC = 5 fotos
-// PR-XYZ = 2 fotos
-//
-// Resultado:
-//
-// Aeronaves com fotos = 2
-// Fotos cadastradas   = 7
-//
-// ==========================================
-
-function atualizarEstatisticasFotos() {
-
-    let total =
-        0;
-
-
-    const matriculasComFotos =
-        new Set();
-
-
-    try {
-
-        for (
-            let i = 0;
-            i < localStorage.length;
-            i++
-        ) {
-
-            const chave =
-                localStorage.key(i);
-
-
-            if (
-                !chave ||
-                !chave.startsWith(
-                    "leospotter_fotos_"
-                )
-            ) {
-
-                continue;
-
-            }
-
-
-            const dados =
-                localStorage.getItem(
-                    chave
-                );
-
-
-            if (!dados) {
-
-                continue;
-
-            }
-
-
-            try {
-
-                const fotos =
-                    JSON.parse(
-                        dados
-                    );
-
-
-                if (
-                    !Array.isArray(
-                        fotos
-                    )
-                ) {
-
-                    continue;
-
-                }
-
-
-                if (
-                    fotos.length === 0
-                ) {
-
-                    continue;
-
-                }
-
-
-                // Total de fotografias
-                total +=
-                    fotos.length;
-
-
-                // A própria chave representa
-                // uma matrícula normalizada.
-                //
-                // Cada chave é contada somente
-                // uma vez pelo Set.
-
-                const matricula =
-                    chave.replace(
-                        "leospotter_fotos_",
-                        ""
-                    );
-
-
-                matriculasComFotos.add(
-                    matricula
-                );
-
-            }
-
-            catch (erroFoto) {
-
-                console.warn(
-                    "Registro de fotos inválido:",
-                    chave,
-                    erroFoto
-                );
-
-            }
-
-        }
-
-    }
-
-    catch (erro) {
-
-        console.error(
-            "Erro ao calcular estatísticas:",
-            erro
-        );
-
-    }
-
-
-    const quantidadeAeronaves =
-        matriculasComFotos.size;
-
-
-    // ======================================
-    // AERONAVES COM FOTOS
-    // ======================================
-
-    if (aeronavesComFotos) {
-
-        aeronavesComFotos.textContent =
-            quantidadeAeronaves.toLocaleString(
-                "pt-BR"
-            );
-
-    }
-
-
-    // ======================================
-    // TOTAL DE FOTOS
-    // ======================================
-
-    if (totalFotos) {
-
-        totalFotos.textContent =
-            total.toLocaleString(
-                "pt-BR"
-            );
-
-    }
-
-
-    console.log(
-        "Estatísticas:",
-        {
-            aeronavesComFotos:
-                quantidadeAeronaves,
-
-            totalFotos:
-                total
-        }
-    );
-
-}
-
-
-// ==========================================
-// COMPATIBILIDADE
-// ==========================================
-//
-// Mantemos esta função porque outras partes
-// do projeto podem utilizá-la.
-// ==========================================
-
-function atualizarTotalFotos() {
-
-    atualizarEstatisticasFotos();
-
-}
-
-
-// ==========================================
-// CRIAR GALERIA
-// ==========================================
-
-function criarGaleria() {
-
-    removerGaleria();
-
-
-    const galeria =
-        document.createElement(
-            "div"
-        );
-
-
-    galeria.id =
-        "galeriaFotos";
-
-
-    galeria.className =
-        "galeria-fotos";
-
-
-    fotosAeronave.forEach(
-        function(foto) {
-
-            const card =
-                document.createElement(
-                    "article"
-                );
-
-
-            card.className =
-                "foto-card";
-
-
-            const imagem =
-                document.createElement(
-                    "img"
-                );
-
-
-            imagem.src =
-                foto.imagem;
-
-
-            imagem.alt =
-                `Fotografia ${foto.matricula}`;
-
-
-            imagem.className =
-                "foto-miniatura";
-
-
-            imagem.loading =
-                "lazy";
-
-
-            imagem.addEventListener(
-                "click",
-                function() {
-
-                    abrirFoto(
-                        foto
-                    );
-
-                }
-            );
-
-
-            const informacoes =
-                document.createElement(
-                    "div"
-                );
-
-
-            informacoes.className =
-                "foto-informacoes";
-
-
-            const matricula =
-                document.createElement(
-                    "strong"
-                );
-
-
-            matricula.textContent =
-                foto.matricula;
-
-
-            const local =
-                document.createElement(
-                    "span"
-                );
-
-
-            local.className =
-                "foto-icao";
-
-
-            local.textContent =
-                foto.icao;
-
-
-            const data =
-                document.createElement(
-                    "span"
-                );
-
-
-            data.className =
-                "foto-data";
-
-
-            data.textContent =
-                formatarData(
-                    foto.data
-                );
-
-
-            informacoes.appendChild(
-                matricula
-            );
-
-
-            informacoes.appendChild(
-                local
-            );
-
-
-            informacoes.appendChild(
-                data
-            );
-
-
-            if (foto.observacao) {
-
-                const observacao =
-                    document.createElement(
-                        "p"
-                    );
-
-
-                observacao.textContent =
-                    foto.observacao;
-
-
-                informacoes.appendChild(
-                    observacao
-                );
-
-            }
-
-
-            const excluir =
-                document.createElement(
-                    "button"
-                );
-
-
-            excluir.type =
-                "button";
-
-
-            excluir.className =
-                "btn-excluir-foto";
-
-
-            excluir.textContent =
-                "Excluir";
-
-
-            excluir.addEventListener(
-                "click",
-                function(event) {
-
-                    event.stopPropagation();
-
-
-                    excluirFoto(
-                        foto.id
-                    );
-
-                }
-            );
-
-
-            informacoes.appendChild(
-                excluir
-            );
-
-
-            card.appendChild(
-                imagem
-            );
-
-
-            card.appendChild(
-                informacoes
-            );
-
-
-            galeria.appendChild(
-                card
-            );
-
-        }
-    );
-
-
-    const container =
-        document.querySelector(
-            ".minhas-fotos"
-        );
-
-
-    if (container) {
-
-        container.appendChild(
-            galeria
-        );
-
-    }
-
-}
-
-
-// ==========================================
-// REMOVER GALERIA
-// ==========================================
-
-function removerGaleria() {
-
-    const galeria =
-        document.getElementById(
-            "galeriaFotos"
-        );
-
-
-    if (galeria) {
-
-        galeria.remove();
-
-    }
-
-}
-
-
-// ==========================================
-// FORMATAR DATA
-// ==========================================
-
-function formatarData(
-    data
-) {
-
-    if (!data) {
-
-        return "Data não informada";
-
-    }
-
-
-    const partes =
-        data.split("-");
-
-
-    if (
-        partes.length !== 3
-    ) {
-
-        return data;
-
-    }
-
-
-    return (
-        partes[2] +
-        "/" +
-        partes[1] +
-        "/" +
-        partes[0]
-    );
-
-}
-
-
-// ==========================================
-// ABRIR FOTO
-// ==========================================
-
-function abrirFoto(
-    foto
-) {
-
-    const janela =
-        document.createElement(
-            "div"
-        );
-
-
-    janela.className =
-        "visualizador-foto";
-
-
-    const imagem =
-        document.createElement(
-            "img"
-        );
-
-
-    imagem.src =
-        foto.imagem;
-
-
-    imagem.alt =
-        foto.matricula;
-
-
-    janela.appendChild(
-        imagem
-    );
-
-
-    janela.addEventListener(
-        "click",
-        function() {
-
-            janela.remove();
-
-        }
-    );
-
-
-    document.body.appendChild(
-        janela
-    );
-
-}
-
-
-// ==========================================
-// EXCLUIR FOTO
-// ==========================================
-
-function excluirFoto(
-    id
-) {
-
-    const confirmar =
-        confirm(
-            "Deseja realmente excluir esta fotografia?"
-        );
-
-
-    if (!confirmar) {
-
-        return;
-
-    }
-
-
-    fotosAeronave =
-        fotosAeronave.filter(
-            function(foto) {
-
-                return foto.id !== id;
-
-            }
-        );
-
-
-    salvarFotosNoNavegador();
-
-
-    atualizarFotos();
-
-
-    atualizarEstatisticasFotos();
-
-}
-
-
-// ==========================================
-// LIMPAR FORMULÁRIO
-// ==========================================
-
-function limparFormularioFoto() {
-
-    if (campoFoto) {
-
-        campoFoto.value = "";
-
-    }
-
-
-    if (campoDataFoto) {
-
-        campoDataFoto.value = "";
-
-    }
-
-
-    if (campoLocalFoto) {
-
-        campoLocalFoto.value = "";
-
-    }
-
-
-    if (campoObservacaoFoto) {
-
-        campoObservacaoFoto.value = "";
-
-    }
-
-
-    if (imagemPreview) {
-
-        imagemPreview.src = "";
-
-    }
-
-
-    if (previewFoto) {
-
-        previewFoto.classList.add(
-            "hidden"
-        );
-
-    }
-
-
-    if (formularioFoto) {
-
-        formularioFoto.classList.add(
-            "hidden"
-        );
-
-    }
-
-
-    if (
-        semFotos &&
-        fotosAeronave.length === 0
-    ) {
-
-        semFotos.classList.remove(
-            "hidden"
-        );
-
-    }
-
-}
-
-
-// ==========================================
-// INICIALIZAÇÃO
-// ==========================================
-
-atualizarVersaoSite();
-
-carregarAeronaves();
-
-atualizarEstatisticasFotos();
+</html>
