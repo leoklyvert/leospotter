@@ -2,56 +2,40 @@ name: Atualizar base RAB
 
 on:
   workflow_dispatch:
+
 permissions:
   contents: write
+
 jobs:
   atualizar-rab:
-
     runs-on: ubuntu-latest
 
     steps:
-- name: Checkout do repositório
+      - name: Checkout do repositorio
         uses: actions/checkout@v4
-      # ==========================================
-      # Baixar RAB da ANAC
-      # ==========================================
 
       - name: Baixar RAB
         run: |
-          curl -L \
-            "https://sistemas.anac.gov.br/dadosabertos/Aeronaves/RAB/dados_aeronaves.json" \
-            -o dados_aeronaves.json
-
-
-      # ==========================================
-      # Processar RAB
-      # ==========================================
+          curl -L "https://sistemas.anac.gov.br/dadosabertos/Aeronaves/RAB/dados_aeronaves.json" -o dados_aeronaves.json
 
       - name: Processar base RAB
         shell: python
         run: |
-
           import json
-
+          import os
 
           print("Lendo base RAB...")
 
           with open(
-    "dados_aeronaves.json",
-    "r",
-    encoding="utf-8-sig"
-) as arquivo:
-
+              "dados_aeronaves.json",
+              "r",
+              encoding="utf-8-sig"
+          ) as arquivo:
               dados = json.load(arquivo)
 
-
-          print(
-              f"Registros encontrados: {len(dados)}"
-          )
-
+          print(f"Registros encontrados: {len(dados)}")
 
           resultado = []
-
 
           for aeronave in dados:
 
@@ -59,109 +43,44 @@ jobs:
                   aeronave.get("MARCA") or ""
               ).strip().upper()
 
-
               if not matricula:
                   continue
 
-
-              # ----------------------------------
-              # Situação
-              # ----------------------------------
-
               codigo_situacao = (
-                  aeronave.get("CDINTERDICAO")
-                  or ""
+                  aeronave.get("CDINTERDICAO") or ""
               ).strip().upper()
 
-
               situacoes = {
-
                   "N": "NORMAL",
-
                   "S": "SUSPENSO",
-
                   "M": "CANCELADO"
-
               }
-
 
               situacao = situacoes.get(
                   codigo_situacao,
                   codigo_situacao or "NÃO INFORMADA"
               )
 
-
-              # ----------------------------------
-              # Montar registro LeoSpotter
-              # ----------------------------------
-
               registro = {
-
                   "matricula": matricula,
-
-                  "fabricante":
-                      aeronave.get(
-                          "NMFABRICANTE"
-                      ),
-
-                  "modelo":
-                      aeronave.get(
-                          "DSMODELO"
-                      ),
-
-                  "numero_serie":
-                      aeronave.get(
-                          "NRSERIE"
-                      ),
-
-                  "ano_fabricacao":
-                      aeronave.get(
-                          "NRANOFABRICACAO"
-                      ),
-
-                  "tipo_icao":
-                      aeronave.get(
-                          "CDTIPOICAO"
-                      ),
-
-                  "categoria":
-                      aeronave.get(
-                          "DSCATEGORIAHOMOLOGACAO"
-                      ),
-
-                  "situacao":
-                      situacao
-
+                  "fabricante": aeronave.get("NMFABRICANTE"),
+                  "modelo": aeronave.get("DSMODELO"),
+                  "numero_serie": aeronave.get("NRSERIE"),
+                  "ano_fabricacao": aeronave.get("NRANOFABRICACAO"),
+                  "tipo_icao": aeronave.get("CDTIPOICAO"),
+                  "categoria": aeronave.get("DSCATEGORIAHOMOLOGACAO"),
+                  "situacao": situacao
               }
 
+              resultado.append(registro)
 
-              resultado.append(
-                  registro
-              )
-
-
-          # ======================================
-          # Criar pasta
-          # ======================================
-
-          import os
-
-          os.makedirs(
-              "data",
-              exist_ok=True
-          )
-
-
-          # ======================================
-          # Gravar JSON
-          # ======================================
+          os.makedirs("data", exist_ok=True)
 
           with open(
               "data/aeronaves.json",
               "w",
               encoding="utf-8"
           ) as arquivo:
-
               json.dump(
                   resultado,
                   arquivo,
@@ -169,20 +88,13 @@ jobs:
                   indent=2
               )
 
-
           print(
               f"Aeronaves processadas: {len(resultado)}"
           )
 
-
-      # ==========================================
-      # Mostrar resultado
-      # ==========================================
-
       - name: Verificar PS-BZR
         shell: python
         run: |
-
           import json
 
           with open(
@@ -190,24 +102,19 @@ jobs:
               "r",
               encoding="utf-8"
           ) as arquivo:
-
               dados = json.load(arquivo)
-
 
           encontrada = next(
               (
-                  a
-                  for a in dados
-                  if a["matricula"] == "PS-BZR"
+                  aeronave
+                  for aeronave in dados
+                  if aeronave["matricula"] == "PS-BZR"
               ),
               None
           )
 
-
           if encontrada:
-
               print("PS-BZR encontrada!")
-
               print(
                   json.dumps(
                       encontrada,
@@ -215,29 +122,18 @@ jobs:
                       ensure_ascii=False
                   )
               )
-
           else:
-
-              print(
-                  "PS-BZR não encontrada."
+              raise Exception(
+                  "PS-BZR não encontrada na base RAB."
               )
-
-
-      # ==========================================
-      # Salvar no GitHub
-      # ==========================================
 
       - name: Salvar alterações
         run: |
-
           git config user.name "github-actions[bot]"
-
-          git config user.email \
-            "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           git add data/aeronaves.json
 
-          git diff --cached --quiet || \
-            git commit -m "Atualizar base RAB"
+          git diff --cached --quiet || git commit -m "Atualizar base RAB"
 
           git push
