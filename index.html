@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="pt-BR">
 
@@ -67,10 +68,261 @@
 
 
         <!-- ==========================================
-             PESQUISA
+             PESQUISA DE AERÓDROMO
              ========================================== -->
 
         <section class="pesquisa-card">
+
+            <h2>
+                Pesquisar aeródromo
+            </h2>
+
+            <p class="descricao">
+                Digite o código ICAO do aeródromo para
+                consultar seus dados.
+            </p>
+
+
+            <div class="campo-pesquisa">
+
+                <input
+                    type="text"
+                    id="icao"
+                    placeholder="Ex.: SBUR"
+                    maxlength="4"
+                    autocomplete="off"
+                    spellcheck="false"
+                >
+
+
+                <button id="btnPesquisarIcao">
+                    Pesquisar
+                </button>
+
+            </div>
+
+
+            <p class="dica">
+
+                Aeródromo de teste:
+                <strong>SBUR</strong>
+
+            </p>
+
+        </section>
+
+
+
+        <!-- ==========================================
+             RESULTADO DO AERÓDROMO
+             ========================================== -->
+
+        <section
+            id="resultadoAerodromo"
+            class="resultado hidden"
+        >
+
+            <!-- CABEÇALHO -->
+
+            <div class="resultado-header">
+
+                <div>
+
+                    <span class="etiqueta">
+                        AERÓDROMO ENCONTRADO
+                    </span>
+
+
+                    <h2 id="resultadoIcao">
+                        SBUR
+                    </h2>
+
+
+                    <p id="resultadoNomeAerodromo">
+                        —
+                    </p>
+
+                </div>
+
+
+                <div class="status">
+                    ✓ Encontrado
+                </div>
+
+            </div>
+
+
+
+            <!-- DADOS DO AERÓDROMO -->
+
+            <div class="dados-aerodromo">
+
+                <div class="dado">
+
+                    <span>
+                        ICAO
+                    </span>
+
+                    <strong id="aerodromoIcao">
+                        —
+                    </strong>
+
+                </div>
+
+
+                <div class="dado">
+
+                    <span>
+                        Cidade
+                    </span>
+
+                    <strong id="aerodromoCidade">
+                        —
+                    </strong>
+
+                </div>
+
+
+                <div class="dado">
+
+                    <span>
+                        UF
+                    </span>
+
+                    <strong id="aerodromoUf">
+                        —
+                    </strong>
+
+                </div>
+
+
+                <div class="dado">
+
+                    <span>
+                        Última atualização AISWEB
+                    </span>
+
+                    <strong id="aerodromoAtualizacao">
+                        —
+                    </strong>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- ==========================================
+                 PISTAS
+                 ========================================== -->
+
+            <div class="subsecao-aerodromo">
+
+                <h4>
+                    Pistas
+                </h4>
+
+
+                <div id="listaPistas">
+
+                    <p class="dados-indisponiveis">
+                        Nenhuma pista encontrada.
+                    </p>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- ==========================================
+                 DISTÂNCIAS DECLARADAS
+                 ========================================== -->
+
+            <div class="subsecao-aerodromo">
+
+                <h4>
+                    Distâncias declaradas
+                </h4>
+
+
+                <div id="listaDistancias">
+
+                    <p class="dados-indisponiveis">
+                        Nenhuma distância declarada encontrada.
+                    </p>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- ==========================================
+                 FREQUÊNCIAS
+                 ========================================== -->
+
+            <div class="subsecao-aerodromo">
+
+                <h4>
+                    Frequências
+                </h4>
+
+
+                <div id="listaFrequencias">
+
+                    <p class="dados-indisponiveis">
+                        Nenhuma frequência encontrada.
+                    </p>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- ==========================================
+             AERÓDROMO NÃO ENCONTRADO
+             ========================================== -->
+
+        <section
+            id="aerodromoNaoEncontrado"
+            class="nao-encontrada hidden"
+        >
+
+            <div class="icone-alerta">
+                🔎
+            </div>
+
+
+            <h3>
+                Aeródromo não encontrado
+            </h3>
+
+
+            <p>
+
+                Não encontramos o código ICAO
+
+                <strong
+                    id="icaoNaoEncontrado"
+                ></strong>
+
+                na base de aeródromos.
+
+            </p>
+
+        </section>
+
+
+
+        <!-- ==========================================
+             PESQUISA DE AERONAVE
+             ========================================== -->
+
+        <section class="pesquisa-card pesquisa-aeronave">
 
             <h2>
                 Pesquisar aeronave
@@ -113,16 +365,13 @@
 
 
         <!-- ==========================================
-             RESULTADO DA PESQUISA
+             RESULTADO DA AERONAVE
              ========================================== -->
 
         <section
             id="resultado"
             class="resultado hidden"
         >
-
-
-            <!-- CABEÇALHO DA AERONAVE -->
 
             <div class="resultado-header">
 
@@ -153,12 +402,9 @@
 
 
 
-            <!-- ==========================================
-                 DADOS DA AERONAVE
-                 ========================================== -->
+            <!-- DADOS DA AERONAVE -->
 
             <div class="dados-aeronave">
-
 
                 <div class="dado">
 
@@ -247,7 +493,6 @@
 
             <div class="minhas-fotos">
 
-
                 <div class="secao-titulo">
 
                     <div>
@@ -274,9 +519,7 @@
 
 
 
-                <!-- ==========================================
-                     SEM FOTOS
-                     ========================================== -->
+                <!-- SEM FOTOS -->
 
                 <div
                     id="semFotos"
@@ -311,22 +554,17 @@
 
 
 
-                <!-- ==========================================
-                     FORMULÁRIO DE FOTOGRAFIA
-                     ========================================== -->
+                <!-- FORMULÁRIO DE FOTO -->
 
                 <div
                     id="formularioFoto"
                     class="formulario-foto hidden"
                 >
 
-
                     <h3>
                         Adicionar fotografia
                     </h3>
 
-
-                    <!-- FOTO -->
 
                     <div class="campo-formulario">
 
@@ -345,8 +583,6 @@
 
 
 
-                    <!-- PREVIEW -->
-
                     <div
                         id="previewFoto"
                         class="preview-foto hidden"
@@ -361,8 +597,6 @@
                     </div>
 
 
-
-                    <!-- DATA -->
 
                     <div class="campo-formulario">
 
@@ -379,8 +613,6 @@
                     </div>
 
 
-
-                    <!-- AERÓDROMO -->
 
                     <div class="campo-formulario">
 
@@ -407,8 +639,6 @@
 
 
 
-                    <!-- OBSERVAÇÃO -->
-
                     <div class="campo-formulario">
 
                         <label for="observacaoFoto">
@@ -426,10 +656,7 @@
 
 
 
-                    <!-- BOTÕES -->
-
                     <div class="acoes-formulario">
-
 
                         <button
                             type="button"
@@ -481,9 +708,7 @@
 
                 Não encontramos a matrícula
 
-                <strong
-                    id="matriculaNaoEncontrada"
-                ></strong>
+                <strong id="matriculaNaoEncontrada"></strong>
 
                 na base de aeronaves.
 
@@ -498,7 +723,6 @@
              ========================================== -->
 
         <section class="estatisticas">
-
 
             <div class="estatistica">
 
@@ -575,3 +799,4 @@
 </body>
 
 </html>
+```
