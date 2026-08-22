@@ -94,23 +94,31 @@
             </p>
 
 
-            <div class="campo-pesquisa">
+            <div class="campo-pesquisa campo-pesquisa-autocomplete">
 
-                <input
-                    type="text"
-                    id="icao"
-                    placeholder="Ex.: SBUR"
-                    maxlength="4"
-                    autocomplete="off"
-                    spellcheck="false"
-                >
+    <div class="autocomplete-container">
 
+        <input
+            type="text"
+            id="matricula"
+            placeholder="Ex.: PS-BZR"
+            maxlength="10"
+            autocomplete="off"
+            spellcheck="false"
+        >
 
-                <button id="btnPesquisarIcao">
-                    Pesquisar
-                </button>
+        <div
+            id="sugestoesAeronaves"
+            class="sugestoes-pesquisa hidden"
+        ></div>
 
-            </div>
+    </div>
+
+    <button id="btnPesquisar">
+        Pesquisar
+    </button>
+
+</div>
 
 
             <p class="dica">
@@ -332,23 +340,31 @@
             </p>
 
 
-            <div class="campo-pesquisa">
+            <div class="campo-pesquisa campo-pesquisa-autocomplete">
 
-                <input
-                    type="text"
-                    id="matricula"
-                    placeholder="Ex.: PS-BZR"
-                    maxlength="10"
-                    autocomplete="off"
-                    spellcheck="false"
-                >
+    <div class="autocomplete-container">
 
+        <input
+            type="text"
+            id="icao"
+            placeholder="Ex.: SBUR"
+            maxlength="30"
+            autocomplete="off"
+            spellcheck="false"
+        >
 
-                <button id="btnPesquisar">
-                    Pesquisar
-                </button>
+        <div
+            id="sugestoesAerodromos"
+            class="sugestoes-pesquisa hidden"
+        ></div>
 
-            </div>
+    </div>
+
+    <button id="btnPesquisarIcao">
+        Pesquisar
+    </button>
+
+</div>
 
 
             <p class="dica">
@@ -784,6 +800,8 @@
 
     <footer>
 
+    <div class="rodape-principal">
+
         <p>
 
             LeoSpotter
@@ -795,80 +813,77 @@
             <span>•</span>
 
             <span id="versaoSite">
-                v1.3.0
+                v1.4.0
             </span>
 
         </p>
 
+    </div>
 
-        <!-- ==========================================
-             CONTATO
-             ========================================== -->
 
-        <div class="contato-rodape">
+    <!-- ==========================================
+         CONTATO
+         ========================================== -->
+
+    <div class="rodape-contato">
+
+        <strong>
+            Contato
+        </strong>
+
+        <a
+            href="mailto:leospotteruberaba@gmail.com"
+        >
+            ✉ leospotteruberaba@gmail.com
+        </a>
+
+    </div>
+
+
+    <!-- ==========================================
+         REDES SOCIAIS
+         ========================================== -->
+
+    <div class="rodape-redes">
+
+        <strong>
+            Encontre o LeoSpotter
+        </strong>
+
+
+        <div class="links-redes">
 
             <a
-                href="mailto:leospotteruberaba@gmail.com"
+                href="https://www.instagram.com/leospotteruberaba/"
+                target="_blank"
+                rel="noopener noreferrer"
             >
-                ✉ leospotteruberaba@gmail.com
+                📷 Instagram
+            </a>
+
+
+            <a
+                href="https://www.jetphotos.com/photographer/179976"
+                target="_blank"
+                rel="noopener noreferrer"
+            >
+                ✈ JetPhotos
+            </a>
+
+
+            <a
+                href="https://www.planespotters.net/photos/gallery/leoklyvert"
+                target="_blank"
+                rel="noopener noreferrer"
+            >
+                🛫 PlaneSpotters
             </a>
 
         </div>
 
+    </div>
 
-        <!-- ==========================================
-             REDES SOCIAIS
-             ========================================== -->
-
-        <div class="redes-sociais">
-
-            <p>
-                Me encontre também:
-            </p>
-
-
-            <div>
-
-                <a
-                    href="https://www.instagram.com/leospotteruberaba/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label="Instagram do LeoSpotter"
-                >
-                    Instagram
-                </a>
-
-
-                <span>•</span>
-
-
-                <a
-                    href="https://www.jetphotos.com/photographer/179976"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label="Perfil do LeoSpotter no JetPhotos"
-                >
-                    JetPhotos
-                </a>
-
-
-                <span>•</span>
-
-
-                <a
-                    href="https://www.planespotters.net/photos/gallery/leoklyvert"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label="Perfil do LeoSpotter no PlaneSpotters"
-                >
-                    PlaneSpotters
-                </a>
-
-            </div>
-
-        </div>
-
-    </footer>
+</footer>
 
 
 
