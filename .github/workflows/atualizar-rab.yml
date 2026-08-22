@@ -2,14 +2,16 @@ name: Atualizar base RAB
 
 on:
   workflow_dispatch:
-
+permissions:
+  contents: write
 jobs:
   atualizar-rab:
 
     runs-on: ubuntu-latest
 
     steps:
-
+- name: Checkout do repositório
+        uses: actions/checkout@v4
       # ==========================================
       # Baixar RAB da ANAC
       # ==========================================
