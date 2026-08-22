@@ -414,31 +414,19 @@ function mostrarAerodromo(aero) {
     // não "cidade"
 
     document.getElementById(
-        "aerodromoCidade"
-    ).textContent =
-        valorOuNaoInformado(
-            aero.municipio || aero.cidade
-        );
+    "aerodromoCidade"
+).textContent =
+    valorOuNaoInformado(
+        aero.municipio_servido ||
+        aero.municipio ||
+        aero.cidade
+    );
 
 
     document.getElementById(
         "aerodromoUf"
     ).textContent =
         valorOuNaoInformado(aero.uf);
-
-
-    // ======================================
-    // ATUALIZAÇÃO
-    // ======================================
-
-    document.getElementById(
-        "aerodromoAtualizacao"
-    ).textContent =
-        valorOuNaoInformado(
-            aero.atualizacao ||
-            aero.data_atualizacao ||
-            aero.atualizado_em
-        );
 
 
     // ======================================
