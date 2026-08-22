@@ -79,7 +79,7 @@ async function carregarAeronaves() {
 
 async function carregarAerodromos() {
     try {
-        const resposta = await fetch("data/aerodromos.json");
+        const resposta = await fetch("data/aeroportos.json");
         if (!resposta.ok) {
             throw new Error("Não foi possível carregar a base de aeródromos.");
         }
