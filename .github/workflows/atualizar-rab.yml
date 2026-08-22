@@ -40,8 +40,11 @@ jobs:
           for aeronave in dados:
 
               matricula = (
-                  aeronave.get("MARCA") or ""
-              ).strip().upper()
+    aeronave.get("MARCA") or ""
+).strip().upper()
+
+if len(matricula) == 6 and "-" not in matricula:
+    matricula = matricula[:2] + "-" + matricula[2:]
 
               if not matricula:
                   continue
