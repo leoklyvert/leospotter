@@ -274,7 +274,9 @@
 
 
 
-                <!-- ESTADO SEM FOTOS -->
+                <!-- ==========================================
+                     SEM FOTOS
+                     ========================================== -->
 
                 <div
                     id="semFotos"
@@ -378,20 +380,28 @@
 
 
 
-                    <!-- LOCAL -->
+                    <!-- AERÓDROMO -->
 
                     <div class="campo-formulario">
 
                         <label for="localFoto">
-                            Local
+                            Aeródromo (ICAO)
                         </label>
 
 
                         <input
                             type="text"
                             id="localFoto"
-                            placeholder="Ex.: Uberaba - MG"
+                            placeholder="Ex.: SBUR"
+                            maxlength="4"
+                            autocomplete="off"
+                            spellcheck="false"
                         >
+
+
+                        <small>
+                            Informe o código ICAO do aeródromo.
+                        </small>
 
                     </div>
 
@@ -409,7 +419,7 @@
                         <textarea
                             id="observacaoFoto"
                             rows="3"
-                            placeholder="Ex.: Fotografada no aeroporto de Uberaba."
+                            placeholder="Ex.: Fotografada durante o movimento no aeroporto."
                         ></textarea>
 
                     </div>
