@@ -35,10 +35,10 @@ jobs:
           print("Lendo base RAB...")
 
           with open(
-              "dados_aeronaves.json",
-              "r",
-              encoding="utf-8"
-          ) as arquivo:
+    "dados_aeronaves.json",
+    "r",
+    encoding="utf-8-sig"
+) as arquivo:
 
               dados = json.load(arquivo)
 
