@@ -1,26 +1,72 @@
-name: Descobrir arquivos ANAC
+name: Testar base de aeroportos ANAC
 
 on:
   workflow_dispatch:
 
 jobs:
-  descobrir:
+  testar:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Consultar diretório ANAC
+      - name: Baixar JSON da ANAC
         run: |
           python - <<'PY'
           import requests
+          import json
 
-          url = "https://sistemas.anac.gov.br/dadosabertos/Aerodromos/Aer%C3%B3dromos%20P%C3%BAblicos/Lista%20de%20aer%C3%B3dromos%20p%C3%BAblicos/"
-          print("Consultando:")
-          print(url)
+          url = "https://sistemas.anac.gov.br/dadosabertos/Aerodromos/Aer%C3%B3dromos%20P%C3%BAblicos/Lista%20de%20aer%C3%B3dromos%20p%C3%BAblicos/AerodromosPublicos.json"
+
+          print("Baixando base ANAC...")
+          resposta = requests.get(url, timeout=120)
+          resposta.raise_for_status()
+
+          print("Download concluído.")
+          print("Tamanho:", len(resposta.content), "bytes")
+
+          dados = resposta.json()
+
           print()
+          print("Tipo:", type(dados).__name__)
+          print("Quantidade:", len(dados))
 
-          resposta = requests.get(url, timeout=60)
-
-          print("HTTP:", resposta.status_code)
           print()
-          print(resposta.text[:20000])
+          print("PRIMEIRO REGISTRO:")
+          print(json.dumps(dados[0], ensure_ascii=False, indent=2))
+
+          print()
+          print("====================================")
+          print("PROCURANDO SBUR")
+          print("====================================")
+
+          encontrado = None
+
+          for item in dados:
+
+              texto = json.dumps(
+                  item,
+                  ensure_ascii=False
+              ).upper()
+
+              if "SBUR" in texto:
+                  encontrado = item
+                  break
+
+          if encontrado:
+
+              print("✓ SBUR encontrada!")
+              print()
+              print(
+                  json.dumps(
+                      encontrado,
+                      ensure_ascii=False,
+                      indent=2
+                  )
+              )
+
+          else:
+
+              raise Exception(
+                  "SBUR não encontrada na base."
+              )
+
           PY
