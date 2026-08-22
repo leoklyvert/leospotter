@@ -41,9 +41,8 @@ async function carregarAeronaves() {
 
     try {
 
-        const resposta = await fetch(
-            "data/aeronaves.json"
-        );
+        const resposta =
+            await fetch("data/aeronaves.json");
 
 
         if (!resposta.ok) {
@@ -55,7 +54,8 @@ async function carregarAeronaves() {
         }
 
 
-        aeronaves = await resposta.json();
+        aeronaves =
+            await resposta.json();
 
 
         console.log(
@@ -178,9 +178,8 @@ function pesquisarAeronave() {
 
 function mostrarAeronave(aeronave) {
 
-    // Guarda a aeronave atualmente pesquisada
-
-    aeronaveAtual = aeronave;
+    aeronaveAtual =
+        aeronave;
 
 
     document.getElementById(
@@ -230,8 +229,6 @@ function mostrarAeronave(aeronave) {
     ).textContent =
         aeronave.situacao || "—";
 
-
-    // Carrega fotos dessa matrícula
 
     carregarFotosAeronave(
         aeronave.matricula
@@ -435,6 +432,28 @@ if (btnCancelarFoto) {
 
 
 // ==========================================
+// CAMPO ICAO
+// ==========================================
+
+if (campoLocalFoto) {
+
+    campoLocalFoto.addEventListener(
+        "input",
+        function() {
+
+            campoLocalFoto.value =
+                campoLocalFoto.value
+                    .toUpperCase()
+                    .replace(/[^A-Z]/g, "")
+                    .substring(0, 4);
+
+        }
+    );
+
+}
+
+
+// ==========================================
 // PREVISUALIZAÇÃO DA FOTO
 // ==========================================
 
@@ -531,6 +550,29 @@ function salvarFoto() {
     }
 
 
+    // ======================================
+    // VALIDAR ICAO
+    // ======================================
+
+    const icao =
+        campoLocalFoto.value
+            .trim()
+            .toUpperCase();
+
+
+    if (!/^[A-Z]{4}$/.test(icao)) {
+
+        alert(
+            "Informe um código ICAO válido com 4 letras.\n\nExemplo: SBUR"
+        );
+
+        campoLocalFoto.focus();
+
+        return;
+
+    }
+
+
     const leitor =
         new FileReader();
 
@@ -552,9 +594,8 @@ function salvarFoto() {
                 data:
                     campoDataFoto.value,
 
-                local:
-                    campoLocalFoto.value
-                        .trim(),
+                icao:
+                    icao,
 
                 observacao:
                     campoObservacaoFoto.value
@@ -575,6 +616,11 @@ function salvarFoto() {
 
 
             limparFormularioFoto();
+
+
+            alert(
+                "Fotografia adicionada com sucesso!"
+            );
 
         };
 
@@ -723,10 +769,6 @@ function atualizarFotos() {
     }
 
 
-    // Por enquanto apenas alternamos
-    // entre "sem fotos" e o formulário.
-    // A galeria será criada na próxima etapa.
-
     if (quantidade === 0) {
 
         if (semFotos) {
@@ -755,7 +797,7 @@ function atualizarFotos() {
 
 
 // ==========================================
-// TOTAL DE FOTOS DO LEO SPOTTER
+// TOTAL DE FOTOS
 // ==========================================
 
 function calcularTotalFotos() {
@@ -889,7 +931,10 @@ function limparFormularioFoto() {
     }
 
 
-    if (semFotos && fotosAeronave.length === 0) {
+    if (
+        semFotos &&
+        fotosAeronave.length === 0
+    ) {
 
         semFotos.classList.remove(
             "hidden"
