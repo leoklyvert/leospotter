@@ -1,6 +1,12 @@
 // ==========================================
 // LeoSpotter
 // Pesquisa de aeronaves
+// Base RAB / ANAC
+// ==========================================
+
+
+// ==========================================
+// VARIÁVEIS
 // ==========================================
 
 let aeronaves = [];
@@ -24,7 +30,7 @@ const naoEncontrada =
 
 
 // ==========================================
-// CARREGAR BASE DE AERONAVES
+// CARREGAR BASE RAB
 // ==========================================
 
 async function carregarAeronaves() {
@@ -35,30 +41,63 @@ async function carregarAeronaves() {
             "data/aeronaves.json"
         );
 
+
         if (!resposta.ok) {
 
             throw new Error(
-                "Não foi possível carregar a base de aeronaves."
+                "Não foi possível carregar a base."
             );
 
         }
 
+
         aeronaves = await resposta.json();
 
+
         console.log(
-            "Base carregada:",
-            aeronaves.length,
-            "aeronave(s)"
+            `Base carregada: ${aeronaves.length} aeronave(s)`
         );
+
+
+        // Atualiza contador
+        const totalAeronaves =
+            document.getElementById(
+                "totalAeronaves"
+            );
+
+
+        if (totalAeronaves) {
+
+            totalAeronaves.textContent =
+                aeronaves.length.toLocaleString(
+                    "pt-BR"
+                );
+
+        }
+
 
     } catch (erro) {
 
         console.error(
-            "Erro ao carregar aeronaves:",
+            "Erro ao carregar base:",
             erro
         );
 
     }
+
+}
+
+
+// ==========================================
+// NORMALIZAR MATRÍCULA
+// ==========================================
+
+function normalizarMatricula(matricula) {
+
+    return matricula
+        .trim()
+        .toUpperCase()
+        .replace(/-/g, "");
 
 }
 
@@ -69,20 +108,28 @@ async function carregarAeronaves() {
 
 function pesquisarAeronave() {
 
+    const matriculaDigitada =
+        campoMatricula.value;
+
+
     const matricula =
-        campoMatricula.value
-            .trim()
-            .toUpperCase();
+        normalizarMatricula(
+            matriculaDigitada
+        );
 
 
     // Limpa resultados anteriores
 
-    resultado.classList.add("hidden");
+    resultado.classList.add(
+        "hidden"
+    );
 
-    naoEncontrada.classList.add("hidden");
+    naoEncontrada.classList.add(
+        "hidden"
+    );
 
 
-    // Impede pesquisa vazia
+    // Não pesquisar vazio
 
     if (!matricula) {
 
@@ -93,24 +140,39 @@ function pesquisarAeronave() {
     }
 
 
-    // Pesquisa na base JSON
+    // Procurar aeronave
 
-    const aeronave = aeronaves.find(
+    const aeronave =
+        aeronaves.find(
+            function(item) {
 
-        item =>
-            item.matricula &&
-            item.matricula.toUpperCase() === matricula
+                return normalizarMatricula(
+                    item.matricula
+                ) === matricula;
 
-    );
+            }
+        );
 
+
+    // Encontrou
 
     if (aeronave) {
 
-        mostrarAeronave(aeronave);
+        mostrarAeronave(
+            aeronave
+        );
 
-    } else {
+    }
 
-        mostrarNaoEncontrada(matricula);
+    // Não encontrou
+
+    else {
+
+        mostrarNaoEncontrada(
+            matriculaDigitada
+                .trim()
+                .toUpperCase()
+        );
 
     }
 
@@ -121,20 +183,22 @@ function pesquisarAeronave() {
 // MOSTRAR AERONAVE
 // ==========================================
 
-function mostrarAeronave(aeronave) {
+function mostrarAeronave(
+    aeronave
+) {
 
     document.getElementById(
         "resultadoMatricula"
     ).textContent =
-        aeronave.matricula;
+        aeronave.matricula ||
+        "—";
 
 
     document.getElementById(
         "resultadoModelo"
     ).textContent =
-        aeronave.modelo_comercial ||
         aeronave.modelo ||
-        "Modelo não informado";
+        "—";
 
 
     document.getElementById(
@@ -158,8 +222,10 @@ function mostrarAeronave(aeronave) {
         "—";
 
 
-    // Temporariamente utilizamos este campo
-    // até alterarmos a ficha da aeronave.
+    // Neste momento utilizaremos
+    // categoria neste campo.
+    // Depois podemos alterar o HTML
+    // para mostrar a categoria separadamente.
 
     document.getElementById(
         "operador"
@@ -168,15 +234,14 @@ function mostrarAeronave(aeronave) {
         "—";
 
 
-    resultado.classList.remove("hidden");
+    resultado.classList.remove(
+        "hidden"
+    );
 
 
     resultado.scrollIntoView({
-
         behavior: "smooth",
-
         block: "start"
-
     });
 
 }
@@ -186,7 +251,9 @@ function mostrarAeronave(aeronave) {
 // AERONAVE NÃO ENCONTRADA
 // ==========================================
 
-function mostrarNaoEncontrada(matricula) {
+function mostrarNaoEncontrada(
+    matricula
+) {
 
     document.getElementById(
         "matriculaNaoEncontrada"
@@ -194,15 +261,14 @@ function mostrarNaoEncontrada(matricula) {
         matricula;
 
 
-    naoEncontrada.classList.remove("hidden");
+    naoEncontrada.classList.remove(
+        "hidden"
+    );
 
 
     naoEncontrada.scrollIntoView({
-
         behavior: "smooth",
-
         block: "center"
-
     });
 
 }
@@ -213,11 +279,8 @@ function mostrarNaoEncontrada(matricula) {
 // ==========================================
 
 btnPesquisar.addEventListener(
-
     "click",
-
     pesquisarAeronave
-
 );
 
 
@@ -226,19 +289,18 @@ btnPesquisar.addEventListener(
 // ==========================================
 
 campoMatricula.addEventListener(
-
     "keydown",
-
     function(event) {
 
-        if (event.key === "Enter") {
+        if (
+            event.key === "Enter"
+        ) {
 
             pesquisarAeronave();
 
         }
 
     }
-
 );
 
 
