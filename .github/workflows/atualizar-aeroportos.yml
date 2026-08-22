@@ -13,8 +13,7 @@ jobs:
           python - <<'PY'
           import requests
 
-          url = "https://sistemas.anac.gov.br/dadosabertos/Aerodromos/Aer%C3%B3dromos%20P%C3%BAblicos/"
-
+          url = "https://sistemas.anac.gov.br/dadosabertos/Aerodromos/Aer%C3%B3dromos%20P%C3%BAblicos/Lista%20de%20aer%C3%B3dromos%20p%C3%BAblicos/"
           print("Consultando:")
           print(url)
           print()
