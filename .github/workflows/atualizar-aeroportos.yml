@@ -1,15 +1,15 @@
-name: Testar base de pistas ANAC
+name: Descobrir pista SBUR
 
 on:
   workflow_dispatch:
 
 jobs:
-  testar:
+  descobrir:
     runs-on: ubuntu-latest
 
     steps:
 
-      - name: Baixar e testar pistas
+      - name: Baixar base de pistas
         run: |
           python - <<'PY'
           import json
@@ -23,14 +23,7 @@ jobs:
               "pda_aerodromos_publicos_pistas_pouso_decolagem.json"
           )
 
-          print("========================================")
-          print("TESTE DA BASE DE PISTAS ANAC")
-          print("========================================")
-          print()
-
-          print("Baixando...")
-          print(url)
-          print()
+          print("Baixando base de pistas...")
 
           with urllib.request.urlopen(
               url,
@@ -39,177 +32,151 @@ jobs:
 
               conteudo = resposta.read()
 
-          print("Download concluído.")
           print(
               "Tamanho:",
               len(conteudo),
               "bytes"
           )
 
-          # ========================================
-          # DECODIFICAR UTF-8
-          # ========================================
-
           texto = conteudo.decode(
               "utf-8-sig"
           )
 
-          # ========================================
-          # TENTAR JSON NORMAL
-          # ========================================
+          dados = []
 
-          dados = None
+          for linha in texto.splitlines():
 
-          try:
+              linha = linha.strip()
 
-              dados = json.loads(texto)
+              if not linha:
+                  continue
 
-              if isinstance(dados, list):
-
-                  print(
-                      "Formato detectado: JSON array"
-                  )
-
-              else:
-
-                  dados = [dados]
-
-          except json.JSONDecodeError:
-
-              print(
-                  "JSON não é um único documento."
+              dados.append(
+                  json.loads(linha)
               )
 
-              print(
-                  "Tentando interpretar como "
-                  "JSON por linhas..."
-              )
-
-              dados = []
-
-              for numero_linha, linha in enumerate(
-                  texto.splitlines(),
-                  start=1
-              ):
-
-                  linha = linha.strip()
-
-                  if not linha:
-                      continue
-
-                  try:
-
-                      registro = json.loads(
-                          linha
-                      )
-
-                      dados.append(
-                          registro
-                      )
-
-                  except json.JSONDecodeError as erro:
-
-                      print()
-                      print(
-                          "Erro na linha:",
-                          numero_linha
-                      )
-
-                      print(
-                          "Conteúdo inicial:"
-                      )
-
-                      print(
-                          linha[:500]
-                      )
-
-                      raise erro
-
-          # ========================================
-          # VERIFICAÇÃO
-          # ========================================
-
-          if not dados:
-
-              raise Exception(
-                  "Nenhum registro encontrado."
-              )
-
-          print()
           print(
-              "Registros encontrados:",
+              "Registros:",
               len(dados)
           )
 
           # ========================================
-          # PRIMEIRO REGISTRO
+          # MOSTRAR TIPOS DE CONJUNTO
           # ========================================
 
           print()
           print("========================================")
-          print("PRIMEIRO REGISTRO")
+          print("CONJUNTOS DE DADOS")
           print("========================================")
-          print()
 
-          print(
-              json.dumps(
-                  dados[0],
-                  ensure_ascii=False,
-                  indent=2
+          conjuntos = sorted(
+              set(
+                  str(
+                      item.get(
+                          "ConjuntoDado"
+                      )
+                  )
+                  for item in dados
               )
           )
 
+          for conjunto in conjuntos:
+
+              quantidade = sum(
+                  1
+                  for item in dados
+                  if str(
+                      item.get(
+                          "ConjuntoDado"
+                      )
+                  ) == conjunto
+              )
+
+              print(
+                  quantidade,
+                  "->",
+                  conjunto
+              )
+
           # ========================================
-          # PROCURAR MG0009
+          # PROCURAR PÚBLICOS
           # ========================================
 
           print()
           print("========================================")
-          print("PROCURANDO CIAD MG0009")
+          print("PISTAS DE AERÓDROMOS PÚBLICOS")
           print("========================================")
+
+          publicos = []
+
+          for item in dados:
+
+              conjunto = str(
+                  item.get(
+                      "ConjuntoDado"
+                  )
+              ).lower()
+
+              if "públicos" in conjunto:
+
+                  publicos.append(
+                      item
+                  )
+
+          print(
+              "Registros públicos:",
+              len(publicos)
+          )
+
+          # ========================================
+          # PROCURAR TERMOS RELACIONADOS AO SBUR
+          # ========================================
+
           print()
+          print("========================================")
+          print("PROCURANDO SBUR / UBERABA / MARIO")
+          print("========================================")
 
           encontrados = []
 
-          for item in dados:
+          termos = [
+              "SBUR",
+              "UBERABA",
+              "MARIO DE ALMEIDA FRANCO",
+              "MG0009"
+          ]
+
+          for item in publicos:
 
               texto_item = json.dumps(
                   item,
                   ensure_ascii=False
               ).upper()
 
-              if "MG0009" in texto_item:
+              for termo in termos:
 
-                  encontrados.append(
-                      item
-                  )
+                  if termo in texto_item:
+
+                      encontrados.append(
+                          item
+                      )
+
+                      break
 
           print(
               "Registros encontrados:",
               len(encontrados)
           )
 
-          if not encontrados:
-
-              raise Exception(
-                  "CIAD MG0009 não encontrado."
-              )
-
-          # ========================================
-          # MOSTRAR RESULTADOS
-          # ========================================
-
           for numero, item in enumerate(
-              encontrados,
+              encontrados[:20],
               start=1
           ):
 
               print()
               print(
-                  f"========== PISTA {numero} =========="
+                  f"========== REGISTRO {numero} =========="
               )
-
-              print()
 
               print(
                   json.dumps(
@@ -219,9 +186,41 @@ jobs:
                   )
               )
 
+          # ========================================
+          # MOSTRAR ALGUNS REGISTROS PÚBLICOS
+          # ========================================
+
+          if not encontrados:
+
+              print()
+              print("Nenhum termo encontrado.")
+              print()
+              print(
+                  "Mostrando os primeiros "
+                  "10 registros públicos:"
+              )
+
+              for numero, item in enumerate(
+                  publicos[:10],
+                  start=1
+              ):
+
+                  print()
+                  print(
+                      f"========== PÚBLICO {numero} =========="
+                  )
+
+                  print(
+                      json.dumps(
+                          item,
+                          ensure_ascii=False,
+                          indent=2
+                      )
+                  )
+
           print()
           print("========================================")
-          print("✓ TESTE CONCLUÍDO COM SUCESSO")
+          print("TESTE FINALIZADO")
           print("========================================")
 
           PY
