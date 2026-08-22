@@ -1862,3 +1862,828 @@ atualizarEstatisticasFotos();
 carregarAeronaves();
 
 carregarAerodromos();
+// ==========================================
+// LeoSpotter
+// PESQUISA INTELIGENTE
+//
+// VERSÃO: 1.4.0
+// ==========================================
+
+
+// ==========================================
+// ELEMENTOS DA PESQUISA INTELIGENTE
+// ==========================================
+
+const sugestoesAeronaves =
+    document.getElementById("sugestoesAeronaves");
+
+const sugestoesAerodromos =
+    document.getElementById("sugestoesAerodromos");
+
+
+// ==========================================
+// CONFIGURAÇÕES
+// ==========================================
+
+const LIMITE_SUGESTOES = 5;
+
+let indiceSugestaoAeronave = -1;
+let indiceSugestaoAerodromo = -1;
+
+
+// ==========================================
+// NORMALIZAÇÃO PARA PESQUISA
+// ==========================================
+
+function normalizarTextoPesquisa(texto) {
+
+    return String(texto || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toUpperCase()
+        .trim();
+
+}
+
+
+// ==========================================
+// ESCAPAR HTML
+// ==========================================
+
+function escaparHtml(texto) {
+
+    return String(texto || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+
+}
+
+
+// ==========================================
+// DESTACAR TEXTO PESQUISADO
+// ==========================================
+
+function destacarTexto(texto, pesquisa) {
+
+    const original = String(texto || "");
+
+    if (!pesquisa) {
+        return escaparHtml(original);
+    }
+
+    const termo = escaparHtml(pesquisa);
+
+    const partes = original.split(
+        new RegExp(`(${pesquisa.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi")
+    );
+
+    return partes.map(function(parte) {
+
+        if (
+            normalizarTextoPesquisa(parte) ===
+            normalizarTextoPesquisa(pesquisa)
+        ) {
+
+            return `<mark>${escaparHtml(parte)}</mark>`;
+
+        }
+
+        return escaparHtml(parte);
+
+    }).join("");
+
+}
+
+
+// ==========================================
+// PESQUISA DE AERONAVES
+// ==========================================
+
+function gerarSugestoesAeronaves() {
+
+    if (!sugestoesAeronaves || !campoMatricula) {
+        return;
+    }
+
+    const termoOriginal = campoMatricula.value.trim();
+
+    const termo = normalizarTextoPesquisa(
+        termoOriginal
+    );
+
+    sugestoesAeronaves.innerHTML = "";
+
+    indiceSugestaoAeronave = -1;
+
+
+    if (!termo) {
+
+        sugestoesAeronaves.classList.add("hidden");
+
+        return;
+
+    }
+
+
+    if (!Array.isArray(aeronaves) || aeronaves.length === 0) {
+
+        sugestoesAeronaves.classList.add("hidden");
+
+        return;
+
+    }
+
+
+    const resultados = aeronaves
+        .filter(function(aeronave) {
+
+            if (!aeronave) {
+                return false;
+            }
+
+            const matricula =
+                normalizarTextoPesquisa(
+                    aeronave.matricula
+                );
+
+            const modelo =
+                normalizarTextoPesquisa(
+                    aeronave.modelo
+                );
+
+            const fabricante =
+                normalizarTextoPesquisa(
+                    aeronave.fabricante
+                );
+
+            return (
+                matricula.includes(termo) ||
+                modelo.includes(termo) ||
+                fabricante.includes(termo)
+            );
+
+        })
+        .slice(0, LIMITE_SUGESTOES);
+
+
+    if (resultados.length === 0) {
+
+        sugestoesAeronaves.classList.add("hidden");
+
+        return;
+
+    }
+
+
+    resultados.forEach(function(aeronave, indice) {
+
+        const item =
+            document.createElement("button");
+
+        item.type = "button";
+
+        item.className =
+            "sugestao-item";
+
+
+        const matricula =
+            aeronave.matricula || "—";
+
+        const fabricante =
+            aeronave.fabricante || "";
+
+        const modelo =
+            aeronave.modelo || "";
+
+
+        item.innerHTML = `
+
+            <span class="sugestao-titulo">
+
+                ${destacarTexto(
+                    matricula,
+                    termoOriginal
+                )}
+
+            </span>
+
+            <span class="sugestao-subtitulo">
+
+                ${escaparHtml(
+                    fabricante
+                )}
+
+                ${fabricante && modelo ? " " : ""}
+
+                ${escaparHtml(
+                    modelo
+                )}
+
+            </span>
+
+        `;
+
+
+        item.addEventListener(
+            "mousedown",
+            function(event) {
+
+                event.preventDefault();
+
+            }
+        );
+
+
+        item.addEventListener(
+            "click",
+            function() {
+
+                campoMatricula.value =
+                    matricula;
+
+                fecharSugestoesAeronaves();
+
+                pesquisarAeronave();
+
+            }
+        );
+
+
+        sugestoesAeronaves.appendChild(item);
+
+    });
+
+
+    sugestoesAeronaves.classList.remove(
+        "hidden"
+    );
+
+}
+
+
+// ==========================================
+// FECHAR SUGESTÕES DE AERONAVES
+// ==========================================
+
+function fecharSugestoesAeronaves() {
+
+    if (!sugestoesAeronaves) {
+        return;
+    }
+
+    sugestoesAeronaves.classList.add(
+        "hidden"
+    );
+
+    indiceSugestaoAeronave = -1;
+
+}
+
+
+// ==========================================
+// NAVEGAÇÃO DAS SUGESTÕES DE AERONAVES
+// ==========================================
+
+function navegarSugestoesAeronaves(event) {
+
+    if (
+        !sugestoesAeronaves ||
+        sugestoesAeronaves.classList.contains("hidden")
+    ) {
+        return;
+    }
+
+
+    const itens =
+        sugestoesAeronaves.querySelectorAll(
+            ".sugestao-item"
+        );
+
+
+    if (!itens.length) {
+        return;
+    }
+
+
+    if (event.key === "ArrowDown") {
+
+        event.preventDefault();
+
+        indiceSugestaoAeronave++;
+
+        if (
+            indiceSugestaoAeronave >=
+            itens.length
+        ) {
+
+            indiceSugestaoAeronave = 0;
+
+        }
+
+        atualizarItemSelecionado(
+            itens,
+            indiceSugestaoAeronave
+        );
+
+    }
+
+
+    else if (event.key === "ArrowUp") {
+
+        event.preventDefault();
+
+        indiceSugestaoAeronave--;
+
+        if (
+            indiceSugestaoAeronave < 0
+        ) {
+
+            indiceSugestaoAeronave =
+                itens.length - 1;
+
+        }
+
+        atualizarItemSelecionado(
+            itens,
+            indiceSugestaoAeronave
+        );
+
+    }
+
+
+    else if (
+        event.key === "Enter" &&
+        indiceSugestaoAeronave >= 0
+    ) {
+
+        event.preventDefault();
+
+        itens[
+            indiceSugestaoAeronave
+        ].click();
+
+    }
+
+
+    else if (event.key === "Escape") {
+
+        fecharSugestoesAeronaves();
+
+    }
+
+}
+
+
+// ==========================================
+// PESQUISA DE AERÓDROMOS
+// ==========================================
+
+function gerarSugestoesAerodromos() {
+
+    if (!sugestoesAerodromos || !campoIcao) {
+        return;
+    }
+
+    const termoOriginal =
+        campoIcao.value.trim();
+
+    const termo =
+        normalizarTextoPesquisa(
+            termoOriginal
+        );
+
+
+    sugestoesAerodromos.innerHTML = "";
+
+    indiceSugestaoAerodromo = -1;
+
+
+    if (!termo) {
+
+        sugestoesAerodromos.classList.add(
+            "hidden"
+        );
+
+        return;
+
+    }
+
+
+    if (
+        !Array.isArray(aerodromos) ||
+        aerodromos.length === 0
+    ) {
+
+        sugestoesAerodromos.classList.add(
+            "hidden"
+        );
+
+        return;
+
+    }
+
+
+    const resultados =
+        aerodromos
+            .filter(function(aero) {
+
+                if (!aero) {
+                    return false;
+                }
+
+
+                const icao =
+                    normalizarTextoPesquisa(
+                        aero.icao
+                    );
+
+                const nome =
+                    normalizarTextoPesquisa(
+                        aero.nome
+                    );
+
+                const municipio =
+                    normalizarTextoPesquisa(
+                        aero.municipio
+                    );
+
+                const municipioServido =
+                    normalizarTextoPesquisa(
+                        aero.municipio_servido
+                    );
+
+                return (
+                    icao.includes(termo) ||
+                    nome.includes(termo) ||
+                    municipio.includes(termo) ||
+                    municipioServido.includes(termo)
+                );
+
+            })
+            .slice(0, LIMITE_SUGESTOES);
+
+
+    if (resultados.length === 0) {
+
+        sugestoesAerodromos.classList.add(
+            "hidden"
+        );
+
+        return;
+
+    }
+
+
+    resultados.forEach(function(aero) {
+
+        const item =
+            document.createElement("button");
+
+        item.type = "button";
+
+        item.className =
+            "sugestao-item";
+
+
+        const icao =
+            aero.icao || "—";
+
+        const nome =
+            aero.nome || "Nome não informado";
+
+        const cidade =
+            aero.municipio_servido ||
+            aero.municipio ||
+            aero.cidade ||
+            "";
+
+
+        item.innerHTML = `
+
+            <span class="sugestao-titulo">
+
+                ${destacarTexto(
+                    icao,
+                    termoOriginal
+                )}
+
+                <span class="sugestao-separador">
+                    —
+                </span>
+
+                ${destacarTexto(
+                    nome,
+                    termoOriginal
+                )}
+
+            </span>
+
+            <span class="sugestao-subtitulo">
+
+                ${escaparHtml(cidade)}
+
+                ${
+                    aero.uf
+                        ? " - " +
+                          escaparHtml(aero.uf)
+                        : ""
+                }
+
+            </span>
+
+        `;
+
+
+        item.addEventListener(
+            "mousedown",
+            function(event) {
+
+                event.preventDefault();
+
+            }
+        );
+
+
+        item.addEventListener(
+            "click",
+            function() {
+
+                campoIcao.value =
+                    icao;
+
+                fecharSugestoesAerodromos();
+
+                pesquisarAerodromo();
+
+            }
+        );
+
+
+        sugestoesAerodromos.appendChild(
+            item
+        );
+
+    });
+
+
+    sugestoesAerodromos.classList.remove(
+        "hidden"
+    );
+
+}
+
+
+// ==========================================
+// FECHAR SUGESTÕES DE AERÓDROMOS
+// ==========================================
+
+function fecharSugestoesAerodromos() {
+
+    if (!sugestoesAerodromos) {
+        return;
+    }
+
+    sugestoesAerodromos.classList.add(
+        "hidden"
+    );
+
+    indiceSugestaoAerodromo = -1;
+
+}
+
+
+// ==========================================
+// NAVEGAÇÃO DAS SUGESTÕES DE AERÓDROMOS
+// ==========================================
+
+function navegarSugestoesAerodromos(event) {
+
+    if (
+        !sugestoesAerodromos ||
+        sugestoesAerodromos.classList.contains("hidden")
+    ) {
+        return;
+    }
+
+
+    const itens =
+        sugestoesAerodromos.querySelectorAll(
+            ".sugestao-item"
+        );
+
+
+    if (!itens.length) {
+        return;
+    }
+
+
+    if (event.key === "ArrowDown") {
+
+        event.preventDefault();
+
+        indiceSugestaoAerodromo++;
+
+
+        if (
+            indiceSugestaoAerodromo >=
+            itens.length
+        ) {
+
+            indiceSugestaoAerodromo = 0;
+
+        }
+
+
+        atualizarItemSelecionado(
+            itens,
+            indiceSugestaoAerodromo
+        );
+
+    }
+
+
+    else if (event.key === "ArrowUp") {
+
+        event.preventDefault();
+
+        indiceSugestaoAerodromo--;
+
+
+        if (
+            indiceSugestaoAerodromo < 0
+        ) {
+
+            indiceSugestaoAerodromo =
+                itens.length - 1;
+
+        }
+
+
+        atualizarItemSelecionado(
+            itens,
+            indiceSugestaoAerodromo
+        );
+
+    }
+
+
+    else if (
+        event.key === "Enter" &&
+        indiceSugestaoAerodromo >= 0
+    ) {
+
+        event.preventDefault();
+
+        itens[
+            indiceSugestaoAerodromo
+        ].click();
+
+    }
+
+
+    else if (event.key === "Escape") {
+
+        fecharSugestoesAerodromos();
+
+    }
+
+}
+
+
+// ==========================================
+// ITEM SELECIONADO
+// ==========================================
+
+function atualizarItemSelecionado(
+    itens,
+    indice
+) {
+
+    itens.forEach(function(item, index) {
+
+        if (index === indice) {
+
+            item.classList.add(
+                "selecionado"
+            );
+
+            item.scrollIntoView({
+                block: "nearest"
+            });
+
+        }
+
+        else {
+
+            item.classList.remove(
+                "selecionado"
+            );
+
+        }
+
+    });
+
+}
+
+
+// ==========================================
+// EVENTOS - AERONAVES
+// ==========================================
+
+if (campoMatricula) {
+
+    campoMatricula.addEventListener(
+        "input",
+        gerarSugestoesAeronaves
+    );
+
+
+    campoMatricula.addEventListener(
+        "keydown",
+        navegarSugestoesAeronaves
+    );
+
+}
+
+
+// ==========================================
+// EVENTOS - AERÓDROMOS
+// ==========================================
+
+if (campoIcao) {
+
+    campoIcao.addEventListener(
+        "input",
+        gerarSugestoesAerodromos
+    );
+
+
+    campoIcao.addEventListener(
+        "keydown",
+        navegarSugestoesAerodromos
+    );
+
+}
+
+
+// ==========================================
+// FECHAR SUGESTÕES AO CLICAR FORA
+// ==========================================
+
+document.addEventListener(
+    "click",
+    function(event) {
+
+        if (
+            campoMatricula &&
+            sugestoesAeronaves &&
+            !campoMatricula.contains(event.target) &&
+            !sugestoesAeronaves.contains(event.target)
+        ) {
+
+            fecharSugestoesAeronaves();
+
+        }
+
+
+        if (
+            campoIcao &&
+            sugestoesAerodromos &&
+            !campoIcao.contains(event.target) &&
+            !sugestoesAerodromos.contains(event.target)
+        ) {
+
+            fecharSugestoesAerodromos();
+
+        }
+
+    }
+);
+
+
+// ==========================================
+// VERSÃO 1.4.0
+// ==========================================
+
+const VERSAO_SITE_140 = "1.4.0";
+
+if (typeof VERSAO_SITE !== "undefined") {
+
+    // Mantém a variável original do sistema.
+    // A versão principal continua sendo controlada
+    // pela constante existente no início do app.js.
+
+}
+
+const elementoVersao =
+    document.getElementById("versaoSite");
+
+if (elementoVersao) {
+
+    elementoVersao.textContent =
+        `v${VERSAO_SITE_140}`;
+
+}
