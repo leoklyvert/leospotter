@@ -8,6 +8,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+
       - name: Baixar JSON da ANAC
         run: |
           python - <<'PY'
@@ -17,21 +18,58 @@ jobs:
           url = "https://sistemas.anac.gov.br/dadosabertos/Aerodromos/Aer%C3%B3dromos%20P%C3%BAblicos/Lista%20de%20aer%C3%B3dromos%20p%C3%BAblicos/AerodromosPublicos.json"
 
           print("Baixando base ANAC...")
-          resposta = requests.get(url, timeout=120)
+          print()
+
+          resposta = requests.get(
+              url,
+              timeout=120
+          )
+
           resposta.raise_for_status()
 
           print("Download concluído.")
-          print("Tamanho:", len(resposta.content), "bytes")
+          print(
+              "Tamanho:",
+              len(resposta.content),
+              "bytes"
+          )
 
-          dados = resposta.json()
+          # A ANAC disponibiliza o JSON com
+          # UTF-8 BOM. Por isso usamos utf-8-sig.
+          texto = resposta.content.decode(
+              "utf-8-sig"
+          )
+
+          dados = json.loads(texto)
 
           print()
-          print("Tipo:", type(dados).__name__)
-          print("Quantidade:", len(dados))
+          print(
+              "Tipo:",
+              type(dados).__name__
+          )
+
+          print(
+              "Quantidade:",
+              len(dados)
+          )
 
           print()
-          print("PRIMEIRO REGISTRO:")
-          print(json.dumps(dados[0], ensure_ascii=False, indent=2))
+          print("====================================")
+          print("PRIMEIRO REGISTRO")
+          print("====================================")
+
+          if not dados:
+              raise Exception(
+                  "A base ANAC está vazia."
+              )
+
+          print(
+              json.dumps(
+                  dados[0],
+                  ensure_ascii=False,
+                  indent=2
+              )
+          )
 
           print()
           print("====================================")
@@ -42,19 +80,22 @@ jobs:
 
           for item in dados:
 
-              texto = json.dumps(
+              texto_item = json.dumps(
                   item,
                   ensure_ascii=False
               ).upper()
 
-              if "SBUR" in texto:
+              if "SBUR" in texto_item:
+
                   encontrado = item
                   break
 
           if encontrado:
 
+              print()
               print("✓ SBUR encontrada!")
               print()
+
               print(
                   json.dumps(
                       encontrado,
@@ -68,5 +109,10 @@ jobs:
               raise Exception(
                   "SBUR não encontrada na base."
               )
+
+          print()
+          print("====================================")
+          print("TESTE CONCLUÍDO COM SUCESSO")
+          print("====================================")
 
           PY
