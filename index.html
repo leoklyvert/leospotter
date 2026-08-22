@@ -1,40 +1,73 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <meta name="description" content="LeoSpotter - Banco pessoal de aeronaves fotografadas">
-    <meta name="theme-color" content="#0b3d91">
+    <meta
+        name="description"
+        content="LeoSpotter - Banco pessoal de aeronaves fotografadas"
+    >
+
+    <meta
+        name="theme-color"
+        content="#0b3d91"
+    >
 
     <title>LeoSpotter</title>
 
     <link rel="stylesheet" href="style.css">
 </head>
 
+
 <body>
 
+    <!-- ==========================================
+         CABEÇALHO
+         ========================================== -->
+
     <header class="topo">
+
         <div class="logo-area">
-            <div class="logo-aviao">✈</div>
+
+            <div class="logo-aviao">
+                ✈
+            </div>
 
             <div>
+
                 <h1>LeoSpotter</h1>
-                <p>Seu banco pessoal de aeronaves</p>
+
+                <p>
+                    Seu banco pessoal de aeronaves
+                </p>
+
             </div>
+
         </div>
+
     </header>
 
 
     <main class="container">
 
+
+        <!-- ==========================================
+             PESQUISA
+             ========================================== -->
+
         <section class="pesquisa-card">
 
-            <h2>Pesquisar aeronave</h2>
+            <h2>
+                Pesquisar aeronave
+            </h2>
 
             <p class="descricao">
-                Digite a matrícula da aeronave para consultar seus dados.
+                Digite a matrícula da aeronave para
+                consultar seus dados.
             </p>
+
 
             <div class="campo-pesquisa">
 
@@ -53,28 +86,45 @@
 
             </div>
 
+
             <p class="dica">
-                Matrícula de teste: <strong>PS-BZR</strong>
+                Matrícula de teste:
+                <strong>PS-BZR</strong>
             </p>
 
         </section>
 
 
-        <section id="resultado" class="resultado hidden">
+
+        <!-- ==========================================
+             RESULTADO
+             ========================================== -->
+
+        <section
+            id="resultado"
+            class="resultado hidden"
+        >
 
             <div class="resultado-header">
 
                 <div>
-                    <span class="etiqueta">AERONAVE ENCONTRADA</span>
+
+                    <span class="etiqueta">
+                        AERONAVE ENCONTRADA
+                    </span>
+
 
                     <h2 id="resultadoMatricula">
                         PS-BZR
                     </h2>
 
+
                     <p id="resultadoModelo">
-                        Modelo da aeronave
+                        F33A
                     </p>
+
                 </div>
+
 
                 <div class="status">
                     ✓ Encontrada
@@ -83,40 +133,121 @@
             </div>
 
 
+
+            <!-- ==========================================
+                 DADOS DA AERONAVE
+                 ========================================== -->
+
             <div class="dados-aeronave">
 
-                <div class="dado">
-                    <span>Fabricante</span>
-                    <strong id="fabricante">—</strong>
-                </div>
 
                 <div class="dado">
-                    <span>Modelo</span>
-                    <strong id="modelo">—</strong>
+
+                    <span>
+                        Fabricante
+                    </span>
+
+                    <strong id="fabricante">
+                        —
+                    </strong>
+
                 </div>
 
-                <div class="dado">
-                    <span>Ano de fabricação</span>
-                    <strong id="ano">—</strong>
-                </div>
+
 
                 <div class="dado">
-                    <span>Operador</span>
-                    <strong id="operador">—</strong>
+
+                    <span>
+                        Modelo
+                    </span>
+
+                    <strong id="modelo">
+                        —
+                    </strong>
+
+                </div>
+
+
+
+                <div class="dado">
+
+                    <span>
+                        Nº de série
+                    </span>
+
+                    <strong id="numeroSerie">
+                        —
+                    </strong>
+
+                </div>
+
+
+
+                <div class="dado">
+
+                    <span>
+                        Ano de fabricação
+                    </span>
+
+                    <strong id="ano">
+                        —
+                    </strong>
+
+                </div>
+
+
+
+                <div class="dado">
+
+                    <span>
+                        Tipo ICAO
+                    </span>
+
+                    <strong id="tipoIcao">
+                        —
+                    </strong>
+
+                </div>
+
+
+
+                <div class="dado">
+
+                    <span>
+                        Situação
+                    </span>
+
+                    <strong id="situacao">
+                        —
+                    </strong>
+
                 </div>
 
             </div>
 
 
+
+            <!-- ==========================================
+                 MEU ACERVO
+                 ========================================== -->
+
             <div class="minhas-fotos">
+
 
                 <div class="secao-titulo">
 
                     <div>
-                        <span class="etiqueta">MEU ACERVO</span>
 
-                        <h3>Minhas fotografias</h3>
+                        <span class="etiqueta">
+                            MEU ACERVO
+                        </span>
+
+                        <h3>
+                            Minhas fotografias
+                        </h3>
+
                     </div>
+
 
                     <span class="contador-fotos">
                         0 fotos
@@ -125,18 +256,29 @@
                 </div>
 
 
+
                 <div class="sem-fotos">
 
-                    <div class="icone-camera">📷</div>
+                    <div class="icone-camera">
+                        📷
+                    </div>
 
-                    <h4>Nenhuma fotografia cadastrada</h4>
+
+                    <h4>
+                        Nenhuma fotografia cadastrada
+                    </h4>
+
 
                     <p>
-                        Em breve você poderá adicionar suas fotografias
-                        desta aeronave.
+                        Em breve você poderá adicionar
+                        suas fotografias desta aeronave.
                     </p>
 
-                    <button class="btn-secundario" disabled>
+
+                    <button
+                        class="btn-secundario"
+                        disabled
+                    >
                         + Adicionar fotografia
                     </button>
 
@@ -147,42 +289,87 @@
         </section>
 
 
-        <section id="naoEncontrada" class="nao-encontrada hidden">
 
-            <div class="icone-alerta">🔎</div>
+        <!-- ==========================================
+             NÃO ENCONTRADA
+             ========================================== -->
 
-            <h3>Aeronave não encontrada</h3>
+        <section
+            id="naoEncontrada"
+            class="nao-encontrada hidden"
+        >
+
+            <div class="icone-alerta">
+                🔎
+            </div>
+
+
+            <h3>
+                Aeronave não encontrada
+            </h3>
+
 
             <p>
+
                 Não encontramos a matrícula
-                <strong id="matriculaNaoEncontrada"></strong>
-                na base de teste.
+
+                <strong
+                    id="matriculaNaoEncontrada"
+                ></strong>
+
+                na base de aeronaves.
+
             </p>
 
         </section>
 
 
+
+        <!-- ==========================================
+             ESTATÍSTICAS
+             ========================================== -->
+
         <section class="estatisticas">
+
 
             <div class="estatistica">
 
-                <span class="estatistica-icone">✈️</span>
+                <span class="estatistica-icone">
+                    ✈️
+                </span>
 
                 <div>
-                    <strong id="totalAeronaves">0</strong>
-                    <span>Aeronaves</span>
+
+                    <strong id="totalAeronaves">
+                        0
+                    </strong>
+
+                    <span>
+                        Aeronaves
+                    </span>
+
                 </div>
 
             </div>
 
 
+
             <div class="estatistica">
 
-                <span class="estatistica-icone">📷</span>
+                <span class="estatistica-icone">
+                    📷
+                </span>
 
                 <div>
-                    <strong id="totalFotos">0</strong>
-                    <span>Fotografias</span>
+
+                    <strong id="totalFotos">
+                        0
+                    </strong>
+
+                    <span>
+                        Fotografias
+                    </span>
+
                 </div>
 
             </div>
@@ -192,18 +379,29 @@
     </main>
 
 
+
+    <!-- ==========================================
+         RODAPÉ
+         ========================================== -->
+
     <footer>
 
         <p>
+
             LeoSpotter
+
             <span>•</span>
+
             Projeto em desenvolvimento
+
         </p>
 
     </footer>
 
 
+
     <script src="app.js"></script>
 
 </body>
+
 </html>
