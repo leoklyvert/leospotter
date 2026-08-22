@@ -1,16 +1,18 @@
-name: Descobrir arquivos de pistas ANAC
+name: Testar base de pistas ANAC
 
 on:
   workflow_dispatch:
 
 jobs:
-  descobrir:
+  testar:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Consultar diretório de pistas
+
+      - name: Baixar e testar pistas
         run: |
           python - <<'PY'
+          import json
           import urllib.request
 
           url = (
@@ -18,23 +20,113 @@ jobs:
               "dadosabertos/Aerodromos/"
               "Aer%C3%B3dromos%20P%C3%BAblicos/"
               "Pistas%20de%20Pouso%20e%20Decolagem/"
+              "pda_aerodromos_publicos_pistas_pouso_decolagem.json"
           )
 
-          print("Consultando:")
+          print("========================================")
+          print("TESTE DA BASE DE PISTAS ANAC")
+          print("========================================")
+          print()
+
+          print("Baixando...")
           print(url)
           print()
 
           with urllib.request.urlopen(
               url,
-              timeout=60
+              timeout=180
           ) as resposta:
 
               conteudo = resposta.read()
 
+          print("Download concluído.")
           print(
-              conteudo.decode(
-                  "utf-8-sig",
-                  errors="replace"
+              "Tamanho:",
+              len(conteudo),
+              "bytes"
+          )
+
+          # Remover UTF-8 BOM
+          texto = conteudo.decode(
+              "utf-8-sig"
+          )
+
+          dados = json.loads(texto)
+
+          if not isinstance(dados, list):
+              raise Exception(
+                  "Formato inesperado da base."
+              )
+
+          print(
+              "Registros:",
+              len(dados)
+          )
+
+          print()
+          print("========================================")
+          print("PRIMEIRO REGISTRO")
+          print("========================================")
+          print()
+
+          print(
+              json.dumps(
+                  dados[0],
+                  ensure_ascii=False,
+                  indent=2
               )
           )
+
+          print()
+          print("========================================")
+          print("PROCURANDO CIAD MG0009")
+          print("========================================")
+          print()
+
+          encontrados = []
+
+          for item in dados:
+
+              texto_item = json.dumps(
+                  item,
+                  ensure_ascii=False
+              ).upper()
+
+              if "MG0009" in texto_item:
+                  encontrados.append(item)
+
+          print(
+              "Registros encontrados:",
+              len(encontrados)
+          )
+
+          if not encontrados:
+
+              raise Exception(
+                  "CIAD MG0009 não encontrado."
+              )
+
+          for numero, item in enumerate(
+              encontrados,
+              start=1
+          ):
+
+              print()
+              print(
+                  f"========== PISTA {numero} =========="
+              )
+
+              print(
+                  json.dumps(
+                      item,
+                      ensure_ascii=False,
+                      indent=2
+                  )
+              )
+
+          print()
+          print("========================================")
+          print("✓ TESTE CONCLUÍDO")
+          print("========================================")
+
           PY
