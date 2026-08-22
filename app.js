@@ -183,55 +183,54 @@ function pesquisarAeronave() {
 // MOSTRAR AERONAVE
 // ==========================================
 
-function mostrarAeronave(
-    aeronave
-) {
+function mostrarAeronave(aeronave) {
 
     document.getElementById(
         "resultadoMatricula"
     ).textContent =
-        aeronave.matricula ||
-        "—";
+        aeronave.matricula || "—";
 
 
     document.getElementById(
         "resultadoModelo"
     ).textContent =
-        aeronave.modelo ||
-        "—";
+        aeronave.modelo || "—";
 
 
     document.getElementById(
         "fabricante"
     ).textContent =
-        aeronave.fabricante ||
-        "—";
+        aeronave.fabricante || "—";
 
 
     document.getElementById(
         "modelo"
     ).textContent =
-        aeronave.modelo ||
-        "—";
+        aeronave.modelo || "—";
+
+
+    document.getElementById(
+        "numeroSerie"
+    ).textContent =
+        aeronave.numero_serie || "—";
 
 
     document.getElementById(
         "ano"
     ).textContent =
-        aeronave.ano_fabricacao ||
-        "—";
+        aeronave.ano_fabricacao || "—";
 
-
-    // Neste momento utilizaremos
-    // categoria neste campo.
-    // Depois podemos alterar o HTML
-    // para mostrar a categoria separadamente.
 
     document.getElementById(
-        "operador"
+        "tipoIcao"
     ).textContent =
-        aeronave.categoria ||
-        "—";
+        aeronave.tipo_icao || "—";
+
+
+    document.getElementById(
+        "situacao"
+    ).textContent =
+        aeronave.situacao || "—";
 
 
     resultado.classList.remove(
