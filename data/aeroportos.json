@@ -2,837 +2,470 @@ name: Atualizar aeroportos
 
 on:
   workflow_dispatch:
-    inputs:
-      modo:
-        description: "Escolha o modo de atualização"
-        required: true
-        default: "teste"
-        type: choice
-        options:
-          - teste
-          - completo
-
   schedule:
     - cron: "0 3 * * 1"
-
 
 permissions:
   contents: write
 
-
 jobs:
-
   atualizar:
-
     runs-on: ubuntu-latest
-
 
     steps:
 
-
-      # ==========================================
-      # CHECKOUT
-      # ==========================================
-
       - name: Baixar repositório
-
         uses: actions/checkout@v4
 
-
-      # ==========================================
-      # ATUALIZAR BASE
-      # ==========================================
-
       - name: Atualizar base de aeroportos
-
-        env:
-          MODO: ${{ inputs.modo || 'completo' }}
-
         run: |
-
           python - <<'PY'
-
           import json
           import re
           import time
           import urllib.request
-
           from html import unescape
           from pathlib import Path
 
-
-          # ==========================================
-          # CONFIGURAÇÃO
-          # ==========================================
-
-          ARQUIVO = Path(
-              "data/aeroportos.json"
-          )
-
+          ARQUIVO = Path("data/aeroportos.json")
           INTERVALO = 0.3
 
-          MODO = "${MODO}"
-
-          ICAO_TESTE = "SBUR"
-
-
-          print()
           print("========================================")
           print("ATUALIZAÇÃO DA BASE DE AEROPORTOS")
           print("========================================")
           print()
 
-          print("Modo:", MODO)
-
-          if MODO == "teste":
-
-              print(
-                  "Aeródromo de teste:",
-                  ICAO_TESTE
-              )
-
-          else:
-
-              print(
-                  "Modo completo:"
-              )
-
-              print(
-                  "Todos os aeródromos serão processados."
-              )
-
-          print()
-
-
           # ==========================================
-          # LER BASE
+          # LER BASE EXISTENTE
           # ==========================================
-
-          print(
-              "Lendo:",
-              ARQUIVO
-          )
-
-          print()
-
 
           with open(
               ARQUIVO,
               "r",
               encoding="utf-8"
           ) as arquivo:
-
-              aeroportos = json.load(
-                  arquivo
-              )
-
+              aeroportos = json.load(arquivo)
 
           print(
               "Aeroportos encontrados:",
               len(aeroportos)
           )
-
           print()
 
-
           # ==========================================
-          # FUNÇÃO AISWEB
+          # CONSULTAR AISWEB
           # ==========================================
 
           def consultar_aisweb(icao):
 
-
               url = (
-
                   "https://aisweb.decea.mil.br/"
-
                   "?codigo="
-
                   + icao
-
                   + "&i=aerodromos"
-
               )
-
 
               requisicao = urllib.request.Request(
-
                   url,
-
                   headers={
-
                       "User-Agent":
-
                       "Mozilla/5.0 "
-
                       "(Windows NT 10.0; Win64; x64) "
-
                       "AppleWebKit/537.36 "
-
                       "(KHTML, like Gecko) "
-
                       "Chrome/120 Safari/537.36"
-
                   }
-
               )
-
 
               with urllib.request.urlopen(
-
                   requisicao,
-
                   timeout=60
-
               ) as resposta:
-
                   conteudo = resposta.read()
 
+              print(
+                  "  HTTP:",
+                  resposta.status,
+                  "|",
+                  len(conteudo),
+                  "bytes"
+              )
 
               texto = conteudo.decode(
-
                   "utf-8",
-
                   errors="replace"
-
               )
 
-
-              texto = unescape(
-                  texto
-              )
-
+              texto = unescape(texto)
 
               # ======================================
-              # LIMPEZA HTML
+              # LIMPAR HTML
               # ======================================
 
               texto = re.sub(
-
                   r"<script.*?</script>",
-
                   " ",
-
                   texto,
-
                   flags=re.I | re.S
-
               )
 
-
               texto = re.sub(
-
                   r"<style.*?</style>",
-
                   " ",
-
                   texto,
-
                   flags=re.I | re.S
-
               )
 
-
               texto = re.sub(
-
                   r"<br\s*/?>",
-
                   "\n",
-
                   texto,
-
                   flags=re.I
-
               )
 
-
               texto = re.sub(
-
                   r"</p>|</div>|</tr>|</li>|</h[1-6]>",
-
                   "\n",
-
                   texto,
-
                   flags=re.I
-
               )
 
-
               texto = re.sub(
-
                   r"<[^>]+>",
-
                   " ",
-
                   texto
-
               )
 
-
               texto = re.sub(
-
                   r"[ \t]+",
-
                   " ",
-
                   texto
-
               )
-
 
               texto = re.sub(
-
                   r"\n\s*\n+",
-
                   "\n",
-
                   texto
-
               )
-
 
               texto = texto.strip()
 
-
               texto_upper = texto.upper()
 
-
-              # ======================================
-              # RESULTADO
-              # ======================================
-
               resultado = {
-
                   "pistas": [],
-
                   "frequencias": [],
-
                   "distancias_declaradas": []
-
               }
 
-
               # ======================================
-              # PISTA
+              # PISTAS
               # ======================================
 
               padrao_pista = re.search(
-
                   r"(\d{2})\s*-\s*.*?"
-
                   r"\(\s*"
-
                   r"(\d+)\s*[xX]\s*(\d+)"
-
                   r"\s+([A-Z0-9]+)"
-
                   r"\s+([0-9]+/[A-Z0-9/]+)"
-
                   r".*?"
-
                   r"\)\s*-\s*.*?"
-
                   r"-\s*(\d{2})",
-
                   texto_upper,
-
                   re.S
-
               )
-
 
               if padrao_pista:
 
                   resultado["pistas"].append({
-
                       "identificacao":
-
                       padrao_pista.group(1)
-
                       + "/"
-
                       + padrao_pista.group(6),
 
-
                       "piso":
-
                       padrao_pista.group(4),
 
-
                       "dimensoes":
-
                       padrao_pista.group(2)
-
                       + " x "
-
                       + padrao_pista.group(3)
-
                       + " m",
 
-
                       "resistencia":
-
                       padrao_pista.group(5)
-
                   })
-
 
               # ======================================
               # FREQUÊNCIAS
               # ======================================
 
               frequencias = re.findall(
-
                   r"(?:COM\s*-\s*)?"
-
                   r"([A-ZÀ-Ú0-9 /-]{2,40})"
-
                   r"\s+\[\d+\]"
-
                   r"(?:\s+\[\d+\])*"
-
                   r"\s+"
-
                   r"(\d{3}\.\d{3})",
-
                   texto_upper
-
               )
-
 
               for servico, frequencia in frequencias:
 
-
                   servico = servico.strip()
 
-
                   existe = any(
-
-                      f["servico"] == servico
-
+                      f["orgao"] == servico
                       and
-
-                      f["frequencia"] == frequencia
-
-                      for f in resultado[
-                          "frequencias"
-                      ]
-
+                      f["valor"] == frequencia
+                      for f in resultado["frequencias"]
                   )
-
 
                   if not existe:
 
-                      resultado[
-                          "frequencias"
-                      ].append({
-
-                          "servico":
-                          servico,
-
-                          "frequencia":
-                          frequencia
-
+                      resultado["frequencias"].append({
+                          "orgao": servico,
+                          "valor": frequencia,
+                          "observacao": ""
                       })
-
 
               # ======================================
               # DISTÂNCIAS DECLARADAS
               # ======================================
 
-              encontrados = []
-
-
-              padroes_distancia = [
-
-                  r"(\d{2})\s+"
-                  r"(\d{3,5})\s+"
-                  r"(\d{3,5})\s+"
-                  r"(\d{3,5})\s+"
-                  r"(\d{3,5})",
-
-                  r"(\d{2})\s*"
-                  r"(\d{3,5})\s*"
-                  r"(\d{3,5})\s*"
-                  r"(\d{3,5})\s*"
-                  r"(\d{3,5})"
-
-              ]
-
-
-              for padrao in padroes_distancia:
-
-                  encontrados.extend(
-
-                      re.findall(
-
-                          padrao,
-
-                          texto
-
-                      )
-
-                  )
-
-
-              vistos = set()
-
+              padrao_distancias = re.findall(
+                  r"\n\s*(\d{2})\s+"
+                  r"(\d+)\s+"
+                  r"(\d+)\s+"
+                  r"(\d+)\s+"
+                  r"(\d+)",
+                  texto
+              )
 
               for (
-
                   cabeceira,
-
                   tora,
-
                   toda,
-
                   asda,
-
                   lda
-
-              ) in encontrados:
-
-
-                  chave = (
-
-                      cabeceira,
-
-                      tora,
-
-                      toda,
-
-                      asda,
-
-                      lda
-
-                  )
-
-
-                  if chave in vistos:
-
-                      continue
-
-
-                  vistos.add(
-                      chave
-                  )
-
+              ) in padrao_distancias:
 
                   resultado[
                       "distancias_declaradas"
                   ].append({
-
-                      "rwy":
-                      cabeceira,
-
-                      "tora":
-                      int(tora),
-
-                      "toda":
-                      int(toda),
-
-                      "asda":
-                      int(asda),
-
-                      "lda":
-                      int(lda)
-
+                      "rwy": cabeceira,
+                      "tora": int(tora),
+                      "toda": int(toda),
+                      "asda": int(asda),
+                      "lda": int(lda)
                   })
-
 
               # ======================================
               # VALIDAÇÃO
               # ======================================
+              #
+              # PISTA e FREQUÊNCIA são obrigatórias.
+              #
+              # DISTÂNCIA é opcional, pois alguns
+              # aeródromos não possuem essa informação
+              # disponível no retorno do AISWEB.
+              # ======================================
 
               if not resultado["pistas"]:
-
                   raise Exception(
                       "Nenhuma pista encontrada"
                   )
 
+              if not resultado["frequencias"]:
+                  raise Exception(
+                      "Nenhuma frequência encontrada"
+                  )
 
               return resultado
-
 
           # ==========================================
           # PROCESSAMENTO
           # ==========================================
 
           atualizados = 0
-
           erros = 0
-
           sem_icao = 0
-
-          ignorados = 0
-
-
-          total = len(
-              aeroportos
-          )
-
+          total_pistas = 0
+          total_frequencias = 0
+          total_distancias = 0
 
           for numero, aeroporto in enumerate(
-
               aeroportos,
-
               start=1
-
           ):
 
-
-              icao = aeroporto.get(
-                  "icao"
-              )
-
+              icao = aeroporto.get("icao")
 
               if not icao:
-
                   sem_icao += 1
-
                   continue
-
 
               icao = str(
                   icao
               ).strip().upper()
 
-
-              # ======================================
-              # MODO TESTE
-              # ======================================
-
-              if MODO == "teste":
-
-                  if icao != ICAO_TESTE:
-
-                      ignorados += 1
-
-                      continue
-
-
-              print()
-
               print(
-                  f"[{numero}/{total}] "
+                  f"[{numero}/{len(aeroportos)}] "
                   f"Consultando {icao}..."
               )
 
-
               try:
-
 
                   dados_aisweb = consultar_aisweb(
                       icao
                   )
 
+                  # ==================================
+                  # ATUALIZAR DADOS
+                  # ==================================
 
-                  pistas = dados_aisweb[
-                      "pistas"
-                  ]
+                  aeroporto["pistas"] = (
+                      dados_aisweb["pistas"]
+                  )
 
+                  aeroporto["frequencias"] = (
+                      dados_aisweb["frequencias"]
+                  )
 
-                  frequencias = dados_aisweb[
-                      "frequencias"
-                  ]
-
-
-                  distancias = dados_aisweb[
+                  aeroporto[
                       "distancias_declaradas"
-                  ]
-
-
-                  # ==================================
-                  # ATUALIZAR PISTAS
-                  # ==================================
-
-                  if pistas:
-
-                      aeroporto[
-                          "pistas"
-                      ] = pistas
-
-
-                  # ==================================
-                  # ATUALIZAR FREQUÊNCIAS
-                  # ==================================
-
-                  if frequencias:
-
-                      aeroporto[
-                          "frequencias"
-                      ] = frequencias
-
-
-                  # ==================================
-                  # ATUALIZAR DISTÂNCIAS
-                  # ==================================
-
-                  if distancias:
-
-                      aeroporto[
+                  ] = (
+                      dados_aisweb[
                           "distancias_declaradas"
-                      ] = distancias
-
-                  else:
-
-                      # Não apaga dados anteriores
-                      # caso o AISWEB não retorne
-                      # distâncias nesta consulta.
-
-                      if (
-                          "distancias_declaradas"
-                          not in aeroporto
-                      ):
-
-                          aeroporto[
-                              "distancias_declaradas"
-                          ] = []
-
+                      ]
+                  )
 
                   atualizados += 1
 
+                  total_pistas += len(
+                      dados_aisweb["pistas"]
+                  )
+
+                  total_frequencias += len(
+                      dados_aisweb["frequencias"]
+                  )
+
+                  total_distancias += len(
+                      dados_aisweb[
+                          "distancias_declaradas"
+                      ]
+                  )
 
                   print(
                       f"  ✓ {icao} atualizado"
                   )
 
-
                   print(
-                      "    Pistas:",
-                      len(pistas)
+                      f"    Pistas: "
+                      f"{len(dados_aisweb['pistas'])}"
                   )
 
-
                   print(
-                      "    Frequências:",
-                      len(frequencias)
+                      f"    Frequências: "
+                      f"{len(dados_aisweb['frequencias'])}"
                   )
 
-
                   print(
-                      "    Distâncias:",
-                      len(distancias)
+                      f"    Distâncias: "
+                      f"{len(dados_aisweb['distancias_declaradas'])}"
                   )
-
 
               except Exception as erro:
 
-
                   erros += 1
-
 
                   print(
                       f"  ! {icao}: {erro}"
                   )
 
-
                   print(
                       "    Mantendo dados anteriores."
                   )
 
-
-              time.sleep(
-                  INTERVALO
-              )
-
+              time.sleep(INTERVALO)
 
           # ==========================================
           # SALVAR
           # ==========================================
 
           with open(
-
               ARQUIVO,
-
               "w",
-
               encoding="utf-8"
-
           ) as arquivo:
 
-
               json.dump(
-
                   aeroportos,
-
                   arquivo,
-
                   ensure_ascii=False,
-
                   indent=2
-
               )
 
-
-              arquivo.write(
-                  "\n"
-              )
-
+              arquivo.write("\n")
 
           # ==========================================
           # RESUMO
           # ==========================================
 
           print()
-
           print("========================================")
-
           print("RESUMO")
-
           print("========================================")
-
 
           print(
-              "Total:",
-              total
+              "Total de aeródromos:",
+              len(aeroportos)
           )
-
 
           print(
               "Atualizados:",
               atualizados
           )
 
-
           print(
               "Com erro:",
               erros
           )
-
 
           print(
               "Sem ICAO:",
               sem_icao
           )
 
-
           print(
-              "Ignorados:",
-              ignorados
+              "Total de pistas:",
+              total_pistas
           )
 
-
-          print()
+          print(
+              "Total de frequências:",
+              total_frequencias
+          )
 
           print(
-              "Arquivo:",
+              "Total de distâncias:",
+              total_distancias
+          )
+
+          print()
+          print(
+              "Arquivo atualizado:",
               ARQUIVO
           )
 
-
           PY
-
 
       # ==========================================
       # VERIFICAR ALTERAÇÕES
       # ==========================================
 
       - name: Verificar alterações
-
         id: verificar
-
         run: |
 
           if git diff --quiet -- data/aeroportos.json; then
@@ -851,185 +484,33 @@ jobs:
 
           fi
 
-
       # ==========================================
-      # VALIDAR SBUR
-      # ==========================================
-
-      - name: Validar dados do SBUR
-
-        run: |
-
-          python - <<'PY'
-
-          import json
-
-          from pathlib import Path
-
-
-          arquivo = Path(
-              "data/aeroportos.json"
-          )
-
-
-          with open(
-              arquivo,
-              "r",
-              encoding="utf-8"
-          ) as f:
-
-              aeroportos = json.load(f)
-
-
-          sbur = next(
-
-              (
-                  a
-
-                  for a in aeroportos
-
-                  if str(
-                      a.get("icao", "")
-                  ).upper() == "SBUR"
-              ),
-
-              None
-
-          )
-
-
-          if not sbur:
-
-              raise Exception(
-                  "SBUR não encontrado na base."
-              )
-
-
-          print()
-          print("========================================")
-          print("VALIDAÇÃO SBUR")
-          print("========================================")
-          print()
-
-
-          print(
-              "ICAO:",
-              sbur.get("icao")
-          )
-
-
-          print(
-              "Nome:",
-              sbur.get("nome")
-          )
-
-
-          print(
-              "Município:",
-              sbur.get("municipio")
-          )
-
-
-          print(
-              "UF:",
-              sbur.get("uf")
-          )
-
-
-          print()
-
-
-          print(
-              "Pistas:",
-              len(
-                  sbur.get(
-                      "pistas",
-                      []
-                  )
-              )
-          )
-
-
-          print(
-              "Frequências:",
-              len(
-                  sbur.get(
-                      "frequencias",
-                      []
-                  )
-              )
-          )
-
-
-          print(
-              "Distâncias:",
-              len(
-                  sbur.get(
-                      "distancias_declaradas",
-                      []
-                  )
-              )
-          )
-
-
-          print()
-
-
-          print(
-              json.dumps(
-                  sbur,
-                  ensure_ascii=False,
-                  indent=2
-              )
-          )
-
-
-          print()
-          print("========================================")
-          print("✓ SBUR VALIDADO")
-          print("========================================")
-
-
-          PY
-
-
-      # ==========================================
-      # COMMIT
+      # COMMIT E PUSH
       # ==========================================
 
       - name: Commit e push
-
         if: steps.verificar.outputs.alterado == 'true'
-
         run: |
 
-          git config user.name \
-            "github-actions[bot]"
-
+          git config user.name "github-actions[bot]"
 
           git config user.email \
             "41898282+github-actions[bot]@users.noreply.github.com"
 
-
           git add data/aeroportos.json
-
 
           git commit \
             -m "Atualizar dados dos aeroportos"
 
-
           git push
-
 
       # ==========================================
       # FINALIZAÇÃO
       # ==========================================
 
       - name: Finalização
-
         run: |
 
-          echo
           echo "========================================"
-          echo "✓ ATUALIZAÇÃO CONCLUÍDA"
+          echo "ATUALIZAÇÃO CONCLUÍDA"
           echo "========================================"
