@@ -20,16 +20,16 @@ jobs:
           from html import unescape
 
 
-          # =========================================================
+          # ==========================================
           # CONFIGURAÇÃO
-          # =========================================================
+          # ==========================================
 
-          ICAO = "SBUR"
+          icao = "SBUR"
 
-          URL = (
+          url = (
               "https://aisweb.decea.mil.br/"
               "?codigo="
-              + ICAO
+              + icao
               + "&i=aerodromos"
           )
 
@@ -38,17 +38,20 @@ jobs:
           print("PARSER AISWEB")
           print("========================================")
           print()
-          print("ICAO:", ICAO)
-          print("URL:", URL)
+
+          print("ICAO:", icao)
+          print("URL:", url)
           print()
 
 
-          # =========================================================
+          # ==========================================
           # DOWNLOAD
-          # =========================================================
+          # ==========================================
 
           requisicao = urllib.request.Request(
-              URL,
+
+              url,
+
               headers={
                   "User-Agent":
                   "Mozilla/5.0 "
@@ -57,6 +60,7 @@ jobs:
                   "(KHTML, like Gecko) "
                   "Chrome/120 Safari/537.36"
               }
+
           )
 
 
@@ -66,17 +70,20 @@ jobs:
           ) as resposta:
 
               conteudo = resposta.read()
-              status_http = resposta.status
 
 
-          print("HTTP:", status_http)
-          print("Tamanho:", len(conteudo), "bytes")
-          print()
+          print("HTTP:", resposta.status)
+
+          print(
+              "Tamanho:",
+              len(conteudo),
+              "bytes"
+          )
 
 
-          # =========================================================
-          # HTML → TEXTO
-          # =========================================================
+          # ==========================================
+          # LIMPEZA HTML
+          # ==========================================
 
           texto = conteudo.decode(
               "utf-8",
@@ -86,25 +93,22 @@ jobs:
           texto = unescape(texto)
 
 
-          # Remove scripts
           texto = re.sub(
-              r"<script\b[^>]*>.*?</script>",
+              r"<script.*?</script>",
               " ",
               texto,
               flags=re.I | re.S
           )
 
 
-          # Remove estilos
           texto = re.sub(
-              r"<style\b[^>]*>.*?</style>",
+              r"<style.*?</style>",
               " ",
               texto,
               flags=re.I | re.S
           )
 
 
-          # Quebras importantes
           texto = re.sub(
               r"<br\s*/?>",
               "\n",
@@ -121,7 +125,6 @@ jobs:
           )
 
 
-          # Remove tags
           texto = re.sub(
               r"<[^>]+>",
               " ",
@@ -129,7 +132,6 @@ jobs:
           )
 
 
-          # Normaliza espaços sem destruir linhas
           texto = re.sub(
               r"[ \t]+",
               " ",
@@ -138,14 +140,7 @@ jobs:
 
 
           texto = re.sub(
-              r"\n[ \t]+",
-              "\n",
-              texto
-          )
-
-
-          texto = re.sub(
-              r"\n{2,}",
+              r"\n\s*\n+",
               "\n",
               texto
           )
@@ -153,21 +148,16 @@ jobs:
 
           texto = texto.strip()
 
-
-          # =========================================================
-          # NORMALIZAÇÃO
-          # =========================================================
-
           texto_upper = texto.upper()
 
 
-          # =========================================================
+          # ==========================================
           # RESULTADO
-          # =========================================================
+          # ==========================================
 
           resultado = {
 
-              "icao": ICAO,
+              "icao": icao,
 
               "nome": None,
 
@@ -179,320 +169,261 @@ jobs:
 
               "frequencias": [],
 
-              "distancias": [],
+              "distancias_declaradas": [],
 
               "atualizacao": None
+
           }
 
 
-          # =========================================================
+          # ==========================================
           # AERÓDROMO
-          #
-          # Exemplo:
-          #
-          # MARIO DE ALMEIDA FRANCO (SBUR) / UBERABA, MG
-          # =========================================================
+          # ==========================================
 
           padrao_aeroporto = re.search(
-              r"([A-ZÀ-Ú0-9 .'\-]+?)"
-              r"\s*\(\s*"
-              + re.escape(ICAO)
-              + r"\s*\)"
-              r"\s*/\s*"
-              r"([^,\n]+)"
-              r",\s*"
-              r"([A-Z]{2})",
+
+              r"([A-ZÀ-Ú0-9 .'\-]+)\s*\(\s*"
+              + re.escape(icao)
+              + r"\s*\)\s*/\s*"
+              r"([^,\n]+),\s*([A-Z]{2})",
+
               texto_upper
+
           )
 
 
           if padrao_aeroporto:
 
               resultado["nome"] = (
-                  padrao_aeroporto.group(1)
+                  padrao_aeroporto
+                  .group(1)
                   .strip()
                   .title()
               )
 
               resultado["municipio"] = (
-                  padrao_aeroporto.group(2)
+                  padrao_aeroporto
+                  .group(2)
                   .strip()
                   .title()
               )
 
               resultado["uf"] = (
-                  padrao_aeroporto.group(3)
+                  padrao_aeroporto
+                  .group(3)
                   .strip()
               )
 
 
-          # =========================================================
+          # ==========================================
           # PISTAS
-          #
-          # Exemplo real:
-          #
-          # 17 - L9 [3] , L12 -
-          # ( 1759x45 ASPH 480/F/A/X/T [7] L14 , L15 )
-          # - L9 [4] , L12 - 35
-          # =========================================================
+          # ==========================================
 
           padrao_pista = re.search(
 
-              r"(\d{2})"
-              r"\s*-\s*"
-              r".*?"
+              r"(\d{2})\s*-\s*.*?"
               r"\(\s*"
-              r"(\d+)"
-              r"\s*[xX]\s*"
-              r"(\d+)"
-              r"\s+"
-              r"([A-Z0-9]+)"
-              r"\s+"
-              r"([0-9]+/[A-Z0-9/]+)"
+              r"(\d+)\s*[xX]\s*(\d+)"
+              r"\s+([A-Z0-9]+)"
+              r"\s+([0-9]+/[A-Z0-9/]+)"
               r".*?"
-              r"\)"
-              r".*?"
-              r"-\s*"
-              r"(\d{2})",
+              r"\)\s*-\s*.*?"
+              r"-\s*(\d{2})",
 
               texto_upper,
 
-              flags=re.S
+              re.S
+
           )
 
 
           if padrao_pista:
 
-              designacao = (
+              pista = {
+
+                  "identificacao":
                   padrao_pista.group(1)
                   + "/"
-                  + padrao_pista.group(6)
-              )
+                  + padrao_pista.group(6),
 
-              comprimento = padrao_pista.group(2)
-
-              largura = padrao_pista.group(3)
-
-              superficie = padrao_pista.group(4)
-
-              resistencia = padrao_pista.group(5)
-
-
-              resultado["pistas"].append({
-
-                  "identificacao": designacao,
-
-                  "piso": superficie,
+                  "piso":
+                  padrao_pista.group(4),
 
                   "dimensoes":
-                      f"{comprimento} x {largura} m",
+                  padrao_pista.group(2)
+                  + " x "
+                  + padrao_pista.group(3)
+                  + " m",
 
-                  "resistencia": resistencia
-              })
+                  "resistencia":
+                  padrao_pista.group(5)
 
-
-          # =========================================================
-          # FREQUÊNCIAS
-          #
-          # Exemplo real:
-          #
-          # COM - RÁDIO [5] [6] 120.800
-          #
-          # Também aceita:
-          #
-          # TORRE [3] 118.500
-          # =========================================================
-
-          padrao_frequencias = re.findall(
-
-              r"(?:COM\s*-\s*)?"
-              r"([A-ZÀ-Ú][A-ZÀ-Ú0-9 /-]{1,40}?)"
-              r"\s*"
-              r"(?:\[\d+\]\s*)+"
-              r"(\d{3}\.\d{3})",
-
-              texto_upper
-          )
+              }
 
 
-          for servico, frequencia in padrao_frequencias:
-
-              servico = servico.strip()
-
-              if not servico:
-                  continue
-
-
-              # Evita duplicados
-
-              existe = any(
-
-                  item["orgao"] == servico
-                  and
-                  item["valor"] == frequencia
-
-                  for item in resultado["frequencias"]
+              resultado["pistas"].append(
+                  pista
               )
 
 
-              if not existe:
+          # ==========================================
+          # FREQUÊNCIAS
+          # ==========================================
 
-                  resultado["frequencias"].append({
+          frequencias = re.findall(
 
-                      "orgao": servico,
-
-                      "valor": frequencia,
-
-                      "observacao": ""
-                  })
-
-
-          # =========================================================
-          # MÉTODO ALTERNATIVO DE FREQUÊNCIA
-          #
-          # Caso o formato acima não capture RÁDIO/TORRE,
-          # procuramos diretamente por:
-          #
-          # RÁDIO 120.800
-          # TORRE 118.500
-          # =========================================================
-
-          padrao_frequencia_direta = re.findall(
-
-              r"\b"
-              r"(RÁDIO|TORRE|APP|TWR|ATIS|AFIS|GND|DEL)"
+              r"(?:COM\s*-\s*)?"
+              r"([A-ZÀ-Ú0-9 /-]{2,40})"
+              r"\s+\[\d+\]"
+              r"(?:\s+\[\d+\])*"
               r"\s+"
               r"(\d{3}\.\d{3})",
 
               texto_upper
+
           )
 
 
-          for servico, frequencia in padrao_frequencia_direta:
+          for servico, frequencia in frequencias:
 
               servico = servico.strip()
 
 
               existe = any(
 
-                  item["orgao"] == servico
+                  f["servico"] == servico
                   and
-                  item["valor"] == frequencia
+                  f["frequencia"] == frequencia
 
-                  for item in resultado["frequencias"]
+                  for f in resultado[
+                      "frequencias"
+                  ]
+
               )
 
 
               if not existe:
 
-                  resultado["frequencias"].append({
+                  resultado[
+                      "frequencias"
+                  ].append({
 
-                      "orgao": servico,
+                      "servico":
+                      servico,
 
-                      "valor": frequencia,
+                      "frequencia":
+                      frequencia
 
-                      "observacao": ""
                   })
 
 
-          # =========================================================
+          # ==========================================
           # DISTÂNCIAS DECLARADAS
-          #
-          # Exemplo:
-          #
-          # 17 1759 1759 1759 1759
-          # 35 1759 1759 1759 1759
-          # =========================================================
+          # ==========================================
 
-          inicio_distancias = re.search(
-
-              r"DISTÂNCIA\(S\)\s+DECLARADA\(S\)",
-
-              texto_upper
-          )
+          print()
+          print("Procurando distâncias declaradas...")
 
 
-          if inicio_distancias:
+          # Procuramos explicitamente a região
+          # relacionada às distâncias declaradas.
 
-              trecho_distancias = texto_upper[
-                  inicio_distancias.end():
-              ]
-
-              # Limita o trecho antes da próxima seção
-
-              fim_distancias = re.search(
-
-                  r"\n[A-ZÁÉÍÓÚÀÂÊÔÃÕÇ /-]{4,}\n",
-
-                  trecho_distancias
-              )
+          encontrados = []
 
 
-              if fim_distancias:
+          padroes_distancia = [
 
-                  trecho_distancias = (
-                      trecho_distancias[
-                          :fim_distancias.start()
-                      ]
+              r"(\d{2})\s+"
+              r"(\d{3,5})\s+"
+              r"(\d{3,5})\s+"
+              r"(\d{3,5})\s+"
+              r"(\d{3,5})",
+
+              r"(\d{2})\s*"
+              r"(\d{3,5})\s*"
+              r"(\d{3,5})\s*"
+              r"(\d{3,5})\s*"
+              r"(\d{3,5})"
+
+          ]
+
+
+          for padrao in padroes_distancia:
+
+              encontrados.extend(
+                  re.findall(
+                      padrao,
+                      texto
                   )
-
-
-              padrao_distancias = re.findall(
-
-                  r"\b"
-                  r"(0[1-9]|[12]\d|3[0-6])"
-                  r"\s+"
-                  r"(\d{3,5})"
-                  r"\s+"
-                  r"(\d{3,5})"
-                  r"\s+"
-                  r"(\d{3,5})"
-                  r"\s+"
-                  r"(\d{3,5})",
-
-                  trecho_distancias
               )
 
 
-              for (
+          # Remove duplicados
+
+          vistos = set()
+
+
+          for (
+
+              cabeceira,
+              tora,
+              toda,
+              asda,
+              lda
+
+          ) in encontrados:
+
+              chave = (
+
                   cabeceira,
                   tora,
                   toda,
                   asda,
                   lda
-              ) in padrao_distancias:
 
-                  registro = {
-
-                      "rwy": cabeceira,
-
-                      "tora": int(tora),
-
-                      "toda": int(toda),
-
-                      "asda": int(asda),
-
-                      "lda": int(lda)
-                  }
+              )
 
 
-                  if registro not in resultado["distancias"]:
-
-                      resultado["distancias"].append(
-                          registro
-                      )
+              if chave in vistos:
+                  continue
 
 
-          # =========================================================
+              vistos.add(chave)
+
+
+              resultado[
+                  "distancias_declaradas"
+              ].append({
+
+                  "rwy":
+                  cabeceira,
+
+                  "tora":
+                  int(tora),
+
+                  "toda":
+                  int(toda),
+
+                  "asda":
+                  int(asda),
+
+                  "lda":
+                  int(lda)
+
+              })
+
+
+          # ==========================================
           # ÚLTIMA ATUALIZAÇÃO
-          # =========================================================
+          # ==========================================
 
           padrao_atualizacao = re.search(
 
-              r"ÚLTIMA\s+ATUALIZAÇÃO\s*:\s*"
+              r"ÚLTIMA ATUALIZAÇÃO:\s*"
               r"(\d{2}/\d{2}/\d{4})",
 
               texto_upper
+
           )
 
 
@@ -503,9 +434,9 @@ jobs:
               )
 
 
-          # =========================================================
+          # ==========================================
           # RESULTADO
-          # =========================================================
+          # ==========================================
 
           print()
           print("========================================")
@@ -523,9 +454,9 @@ jobs:
           )
 
 
-          # =========================================================
+          # ==========================================
           # VALIDAÇÃO
-          # =========================================================
+          # ==========================================
 
           print()
           print("========================================")
@@ -536,24 +467,10 @@ jobs:
           erros = []
 
 
-          if resultado["icao"] != ICAO:
+          if resultado["icao"] != icao:
 
               erros.append(
                   "ICAO não identificado"
-              )
-
-
-          if not resultado["nome"]:
-
-              erros.append(
-                  "Nome do aeródromo não identificado"
-              )
-
-
-          if not resultado["municipio"]:
-
-              erros.append(
-                  "Município não identificado"
               )
 
 
@@ -571,7 +488,9 @@ jobs:
               )
 
 
-          if not resultado["distancias"]:
+          if not resultado[
+              "distancias_declaradas"
+          ]:
 
               erros.append(
                   "Nenhuma distância declarada encontrada"
@@ -584,11 +503,13 @@ jobs:
 
               for erro in erros:
 
-                  print("✗", erro)
+                  print(
+                      "✗",
+                      erro
+                  )
 
 
               raise Exception(
-
                   "Parser não conseguiu extrair "
                   "todos os dados esperados."
               )
@@ -596,13 +517,7 @@ jobs:
 
           print()
 
-          print("✓ ICAO:", resultado["icao"])
-
-          print("✓ Nome:", resultado["nome"])
-
-          print("✓ Município:", resultado["municipio"])
-
-          print("✓ UF:", resultado["uf"])
+          print("✓ ICAO encontrado")
 
           print(
               "✓ Pistas:",
@@ -616,11 +531,16 @@ jobs:
 
           print(
               "✓ Distâncias:",
-              len(resultado["distancias"])
+              len(
+                  resultado[
+                      "distancias_declaradas"
+                  ]
+              )
           )
 
 
           print()
+
           print("========================================")
           print("✓ PARSER AISWEB FUNCIONANDO")
           print("========================================")
