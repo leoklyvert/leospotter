@@ -1,13 +1,17 @@
 // ==========================================
 // LeoSpotter
 // Manual de consulta para spotters
-// Pesquisa de aeronaves + Acervo fotográfico
-// Pesquisa inteligente de aeronaves e aeródromos
 //
-// VERSÃO: 1.4.0
+// Pesquisa de aeronaves
+// Pesquisa de aeródromos
+// Autocomplete
+// Acervo fotográfico
+// Google Analytics 4
+//
+// VERSÃO: 1.5.0
 // ==========================================
 
-const VERSAO_SITE = "1.4.0";
+const VERSAO_SITE = "1.5.0";
 
 
 // ==========================================
@@ -15,45 +19,44 @@ const VERSAO_SITE = "1.4.0";
 // ==========================================
 
 let aeronaves = [];
+let aerodromos = [];
+
 let aeronaveAtual = null;
 let fotosAeronave = [];
 
-let aerodromos = [];
+let indiceSugestaoAeronave = -1;
+let indiceSugestaoAerodromo = -1;
 
 
 // ==========================================
 // GOOGLE ANALYTICS
 // ==========================================
 
-function registrarEventoAnalytics(
-    nomeEvento,
-    parametros = {}
-) {
+function registrarEvento(nomeEvento, parametros = {}) {
 
-    if (typeof gtag !== "function") {
+    try {
+
+        if (typeof gtag === "function") {
+
+            gtag("event", nomeEvento, parametros);
+
+        }
+
+    } catch (erro) {
 
         console.warn(
-            "Google Analytics ainda não está disponível."
+            "LeoSpotter: erro ao registrar evento no Google Analytics:",
+            erro
         );
 
-        return;
-
     }
-
-    gtag(
-        "event",
-        nomeEvento,
-        parametros
-    );
 
 }
 
 
 // ==========================================
-// ELEMENTOS DA PÁGINA
+// ELEMENTOS - AERONAVES
 // ==========================================
-
-// AERONAVES
 
 const campoMatricula =
     document.getElementById("matricula");
@@ -71,7 +74,9 @@ const sugestoesAeronaves =
     document.getElementById("sugestoesAeronaves");
 
 
-// AERÓDROMOS
+// ==========================================
+// ELEMENTOS - AERÓDROMOS
+// ==========================================
 
 const campoIcao =
     document.getElementById("icao");
@@ -89,7 +94,9 @@ const sugestoesAerodromos =
     document.getElementById("sugestoesAerodromos");
 
 
-// ESTATÍSTICAS
+// ==========================================
+// ELEMENTOS - ESTATÍSTICAS
+// ==========================================
 
 const totalFotos =
     document.getElementById("totalFotos");
@@ -118,7 +125,7 @@ function atualizarVersaoSite() {
 
 
 // ==========================================
-// CARREGAR BASE DE AERONAVES
+// CARREGAR AERONAVES
 // ==========================================
 
 async function carregarAeronaves() {
@@ -126,7 +133,9 @@ async function carregarAeronaves() {
     try {
 
         const resposta =
-            await fetch("data/aeronaves.json");
+            await fetch(
+                "data/aeronaves.json"
+            );
 
         if (!resposta.ok) {
 
@@ -139,11 +148,17 @@ async function carregarAeronaves() {
         aeronaves =
             await resposta.json();
 
+        if (!Array.isArray(aeronaves)) {
+
+            aeronaves = [];
+
+        }
+
         console.log(
             `Base de aeronaves carregada: ${aeronaves.length} registro(s)`
         );
 
-        atualizarPrevisoesPesquisa();
+        atualizarPrevisoesAeronaves();
 
     } catch (erro) {
 
@@ -158,7 +173,7 @@ async function carregarAeronaves() {
 
 
 // ==========================================
-// CARREGAR BASE DE AERÓDROMOS
+// CARREGAR AERÓDROMOS
 // ==========================================
 
 async function carregarAerodromos() {
@@ -166,7 +181,9 @@ async function carregarAerodromos() {
     try {
 
         const resposta =
-            await fetch("data/aeroportos.json");
+            await fetch(
+                "data/aeroportos.json"
+            );
 
         if (!resposta.ok) {
 
@@ -179,11 +196,17 @@ async function carregarAerodromos() {
         aerodromos =
             await resposta.json();
 
+        if (!Array.isArray(aerodromos)) {
+
+            aerodromos = [];
+
+        }
+
         console.log(
             `Base de aeródromos carregada: ${aerodromos.length} registro(s)`
         );
 
-        atualizarPrevisoesPesquisa();
+        atualizarPrevisoesAerodromos();
 
     } catch (erro) {
 
@@ -198,7 +221,7 @@ async function carregarAerodromos() {
 
 
 // ==========================================
-// NORMALIZAÇÃO DE MATRÍCULA
+// NORMALIZAR MATRÍCULA
 // ==========================================
 
 function normalizarMatricula(matricula) {
@@ -212,7 +235,7 @@ function normalizarMatricula(matricula) {
 
 
 // ==========================================
-// NORMALIZAÇÃO DE TEXTO
+// NORMALIZAR TEXTO
 // ==========================================
 
 function normalizarTexto(texto) {
@@ -253,7 +276,7 @@ function pesquisarAeronave() {
     }
 
     const matriculaDigitada =
-        campoMatricula.value;
+        campoMatricula.value.trim();
 
     const matricula =
         normalizarMatricula(
@@ -263,11 +286,19 @@ function pesquisarAeronave() {
     fecharSugestoesAeronaves();
 
     if (resultado) {
-        resultado.classList.add("hidden");
+
+        resultado.classList.add(
+            "hidden"
+        );
+
     }
 
     if (naoEncontrada) {
-        naoEncontrada.classList.add("hidden");
+
+        naoEncontrada.classList.add(
+            "hidden"
+        );
+
     }
 
     if (!matricula) {
@@ -278,51 +309,66 @@ function pesquisarAeronave() {
 
     }
 
+
     const aeronave =
-        aeronaves.find(function(item) {
+        aeronaves.find(
+            function(item) {
 
-            return (
-                normalizarMatricula(
-                    item.matricula || ""
-                ) === matricula
-            );
+                return (
+                    normalizarMatricula(
+                        item.matricula
+                    ) === matricula
+                );
 
-        });
+            }
+        );
+
+
+    // ======================================
+    // REGISTRAR PESQUISA
+    // ======================================
+
+    registrarEvento(
+        "pesquisa_aeronave",
+        {
+            matricula:
+                matriculaDigitada
+                    .trim()
+                    .toUpperCase()
+        }
+    );
 
 
     if (aeronave) {
 
-        registrarEventoAnalytics(
-            "pesquisa_aeronave",
+        registrarEvento(
+            "aeronave_encontrada",
             {
                 matricula:
-                    aeronave.matricula || matricula,
-                resultado:
-                    "encontrado"
+                    aeronave.matricula || matricula
             }
         );
 
-        mostrarAeronave(aeronave);
+        mostrarAeronave(
+            aeronave
+        );
 
     } else {
 
-        const matriculaPesquisa =
-            matriculaDigitada
-                .trim()
-                .toUpperCase();
-
-        registrarEventoAnalytics(
-            "pesquisa_aeronave",
+        registrarEvento(
+            "aeronave_nao_encontrada",
             {
                 matricula:
-                    matriculaPesquisa,
-                resultado:
-                    "nao_encontrado"
+                    matriculaDigitada
+                        .trim()
+                        .toUpperCase()
             }
         );
 
         mostrarNaoEncontrada(
-            matriculaPesquisa
+            matriculaDigitada
+                .trim()
+                .toUpperCase()
         );
 
     }
@@ -334,7 +380,9 @@ function pesquisarAeronave() {
 // MOSTRAR AERONAVE
 // ==========================================
 
-function mostrarAeronave(aeronave) {
+function mostrarAeronave(
+    aeronave
+) {
 
     aeronaveAtual =
         aeronave;
@@ -368,22 +416,34 @@ function mostrarAeronave(aeronave) {
 
 
     const fabricante =
-        document.getElementById("fabricante");
+        document.getElementById(
+            "fabricante"
+        );
 
     const modelo =
-        document.getElementById("modelo");
+        document.getElementById(
+            "modelo"
+        );
 
     const numeroSerie =
-        document.getElementById("numeroSerie");
+        document.getElementById(
+            "numeroSerie"
+        );
 
     const ano =
-        document.getElementById("ano");
+        document.getElementById(
+            "ano"
+        );
 
     const tipoIcao =
-        document.getElementById("tipoIcao");
+        document.getElementById(
+            "tipoIcao"
+        );
 
     const situacao =
-        document.getElementById("situacao");
+        document.getElementById(
+            "situacao"
+        );
 
 
     if (fabricante) {
@@ -454,7 +514,9 @@ function mostrarAeronave(aeronave) {
 // AERONAVE NÃO ENCONTRADA
 // ==========================================
 
-function mostrarNaoEncontrada(matricula) {
+function mostrarNaoEncontrada(
+    matricula
+) {
 
     const elemento =
         document.getElementById(
@@ -514,6 +576,7 @@ function pesquisarAerodromo() {
 
     }
 
+
     if (aerodromoNaoEncontrado) {
 
         aerodromoNaoEncontrado.classList.add(
@@ -539,64 +602,75 @@ function pesquisarAerodromo() {
 
 
     const aero =
-        aerodromos.find(function(item) {
+        aerodromos.find(
+            function(item) {
 
-            const icao =
-                normalizarTexto(
-                    item.icao
+                const icao =
+                    normalizarTexto(
+                        item.icao
+                    );
+
+                const nome =
+                    normalizarTexto(
+                        item.nome
+                    );
+
+                const municipio =
+                    normalizarTexto(
+                        item.municipio
+                    );
+
+                const municipioServido =
+                    normalizarTexto(
+                        item.municipio_servido
+                    );
+
+
+                return (
+                    icao === termo ||
+                    nome === termo ||
+                    municipio === termo ||
+                    municipioServido === termo
                 );
 
-            const nome =
-                normalizarTexto(
-                    item.nome
-                );
-
-            const municipio =
-                normalizarTexto(
-                    item.municipio
-                );
-
-            const municipioServido =
-                normalizarTexto(
-                    item.municipio_servido
-                );
+            }
+        );
 
 
-            return (
-                icao === termo ||
-                nome === termo ||
-                municipio === termo ||
-                municipioServido === termo
-            );
+    // ======================================
+    // REGISTRAR PESQUISA
+    // ======================================
 
-        });
+    registrarEvento(
+        "pesquisa_aerodromo",
+        {
+            busca:
+                termoDigitado
+        }
+    );
 
 
     if (aero) {
 
-        registrarEventoAnalytics(
-            "pesquisa_aerodromo",
+        registrarEvento(
+            "aerodromo_encontrado",
             {
-                termo:
-                    termoDigitado,
                 icao:
-                    aero.icao || "",
-                resultado:
-                    "encontrado"
+                    aero.icao || termoDigitado
             }
         );
 
-        mostrarAerodromo(aero);
+        mostrarAerodromo(
+            aero
+        );
 
     } else {
 
-        registrarEventoAnalytics(
-            "pesquisa_aerodromo",
+        registrarEvento(
+            "aerodromo_nao_encontrado",
             {
-                termo:
-                    termoDigitado,
-                resultado:
-                    "nao_encontrado"
+                busca:
+                    termoDigitado
             }
         );
 
@@ -637,7 +711,9 @@ function pesquisarAerodromo() {
 // MOSTRAR AERÓDROMO
 // ==========================================
 
-function mostrarAerodromo(aero) {
+function mostrarAerodromo(
+    aero
+) {
 
     const resultadoIcao =
         document.getElementById(
@@ -727,8 +803,8 @@ function mostrarAerodromo(aero) {
 
         aerodromoElevacao.textContent =
             aero.elevacao ||
-            aero.elevacao_m ||
-            aero.elevation ||
+            aero.elevacao_ft ||
+            aero.altitude ||
             "—";
 
     }
@@ -822,7 +898,6 @@ function mostrarAerodromo(aero) {
                             </div>
 
                         </div>
-
                     `;
 
 
@@ -835,10 +910,11 @@ function mostrarAerodromo(aero) {
 
         } else {
 
-            listaPistas.innerHTML =
-                `<p class="dados-indisponiveis">
+            listaPistas.innerHTML = `
+                <p class="dados-indisponiveis">
                     Nenhuma pista encontrada.
-                </p>`;
+                </p>
+            `;
 
         }
 
@@ -866,7 +942,7 @@ function mostrarAerodromo(aero) {
         ) {
 
             aero.distancias.forEach(
-                function(dist) {
+                function(distancia) {
 
                     const p =
                         document.createElement(
@@ -874,7 +950,7 @@ function mostrarAerodromo(aero) {
                         );
 
                     p.textContent =
-                        dist;
+                        distancia;
 
                     listaDistancias.appendChild(
                         p
@@ -885,10 +961,11 @@ function mostrarAerodromo(aero) {
 
         } else {
 
-            listaDistancias.innerHTML =
-                `<p class="dados-indisponiveis">
+            listaDistancias.innerHTML = `
+                <p class="dados-indisponiveis">
                     Nenhuma distância declarada encontrada.
-                </p>`;
+                </p>
+            `;
 
         }
 
@@ -960,10 +1037,11 @@ function mostrarAerodromo(aero) {
 
         } else {
 
-            listaFrequencias.innerHTML =
-                `<p class="dados-indisponiveis">
+            listaFrequencias.innerHTML = `
+                <p class="dados-indisponiveis">
                     Nenhuma frequência encontrada.
-                </p>`;
+                </p>
+            `;
 
         }
 
@@ -987,7 +1065,7 @@ function mostrarAerodromo(aero) {
 
 
 // ==========================================
-// PESQUISA INTELIGENTE - AERONAVES
+// SUGESTÕES - AERONAVES
 // ==========================================
 
 function gerarSugestoesAeronaves() {
@@ -1002,16 +1080,13 @@ function gerarSugestoesAeronaves() {
     }
 
 
-    const texto =
-        campoMatricula.value.trim();
-
-
     const termo =
-        normalizarTexto(texto);
+        normalizarTexto(
+            campoMatricula.value
+        );
 
 
     indiceSugestaoAeronave = -1;
-
 
     sugestoesAeronaves.innerHTML = "";
 
@@ -1039,40 +1114,42 @@ function gerarSugestoesAeronaves() {
 
     const resultados =
         aeronaves
-            .filter(function(aeronave) {
+            .filter(
+                function(aeronave) {
 
-                if (!aeronave) {
-                    return false;
+                    if (!aeronave) {
+                        return false;
+                    }
+
+
+                    const matricula =
+                        normalizarTexto(
+                            aeronave.matricula
+                        );
+
+                    const fabricante =
+                        normalizarTexto(
+                            aeronave.fabricante
+                        );
+
+                    const modelo =
+                        normalizarTexto(
+                            aeronave.modelo
+                        );
+
+
+                    return (
+                        matricula.includes(termo) ||
+                        fabricante.includes(termo) ||
+                        modelo.includes(termo)
+                    );
+
                 }
-
-
-                const matricula =
-                    normalizarTexto(
-                        aeronave.matricula
-                    );
-
-                const fabricante =
-                    normalizarTexto(
-                        aeronave.fabricante
-                    );
-
-                const modelo =
-                    normalizarTexto(
-                        aeronave.modelo
-                    );
-
-
-                return (
-                    matricula.includes(termo) ||
-                    fabricante.includes(termo) ||
-                    modelo.includes(termo)
-                );
-
-            })
+            )
             .slice(0, 5);
 
 
-    if (resultados.length === 0) {
+    if (!resultados.length) {
 
         fecharSugestoesAeronaves();
 
@@ -1090,7 +1167,8 @@ function gerarSugestoesAeronaves() {
                 );
 
 
-            item.type = "button";
+            item.type =
+                "button";
 
             item.className =
                 "sugestao-item";
@@ -1109,17 +1187,23 @@ function gerarSugestoesAeronaves() {
             item.innerHTML = `
 
                 <span class="sugestao-titulo">
-                    ${escaparHtml(matricula)}
+                    ${escaparHtml(
+                        matricula
+                    )}
                 </span>
 
                 <span class="sugestao-subtitulo">
-                    ${escaparHtml(fabricante)}
+                    ${escaparHtml(
+                        fabricante
+                    )}
                     ${
                         fabricante && modelo
                             ? " "
                             : ""
                     }
-                    ${escaparHtml(modelo)}
+                    ${escaparHtml(
+                        modelo
+                    )}
                 </span>
 
             `;
@@ -1138,6 +1222,15 @@ function gerarSugestoesAeronaves() {
             item.addEventListener(
                 "click",
                 function() {
+
+                    registrarEvento(
+                        "selecao_sugestao_aeronave",
+                        {
+                            matricula:
+                                matricula
+                        }
+                    );
+
 
                     campoMatricula.value =
                         matricula;
@@ -1166,7 +1259,7 @@ function gerarSugestoesAeronaves() {
 
 
 // ==========================================
-// PESQUISA INTELIGENTE - AERÓDROMOS
+// SUGESTÕES - AERÓDROMOS
 // ==========================================
 
 function gerarSugestoesAerodromos() {
@@ -1181,16 +1274,13 @@ function gerarSugestoesAerodromos() {
     }
 
 
-    const texto =
-        campoIcao.value.trim();
-
-
     const termo =
-        normalizarTexto(texto);
+        normalizarTexto(
+            campoIcao.value
+        );
 
 
     indiceSugestaoAerodromo = -1;
-
 
     sugestoesAerodromos.innerHTML = "";
 
@@ -1218,46 +1308,48 @@ function gerarSugestoesAerodromos() {
 
     const resultados =
         aerodromos
-            .filter(function(aero) {
+            .filter(
+                function(aero) {
 
-                if (!aero) {
-                    return false;
+                    if (!aero) {
+                        return false;
+                    }
+
+
+                    const icao =
+                        normalizarTexto(
+                            aero.icao
+                        );
+
+                    const nome =
+                        normalizarTexto(
+                            aero.nome
+                        );
+
+                    const municipio =
+                        normalizarTexto(
+                            aero.municipio
+                        );
+
+                    const municipioServido =
+                        normalizarTexto(
+                            aero.municipio_servido
+                        );
+
+
+                    return (
+                        icao.includes(termo) ||
+                        nome.includes(termo) ||
+                        municipio.includes(termo) ||
+                        municipioServido.includes(termo)
+                    );
+
                 }
-
-
-                const icao =
-                    normalizarTexto(
-                        aero.icao
-                    );
-
-                const nome =
-                    normalizarTexto(
-                        aero.nome
-                    );
-
-                const municipio =
-                    normalizarTexto(
-                        aero.municipio
-                    );
-
-                const municipioServido =
-                    normalizarTexto(
-                        aero.municipio_servido
-                    );
-
-
-                return (
-                    icao.includes(termo) ||
-                    nome.includes(termo) ||
-                    municipio.includes(termo) ||
-                    municipioServido.includes(termo)
-                );
-
-            })
+            )
             .slice(0, 5);
 
 
-    if (resultados.length === 0) {
+    if (!resultados.length) {
 
         fecharSugestoesAerodromos();
 
@@ -1275,7 +1367,8 @@ function gerarSugestoesAerodromos() {
                 );
 
 
-            item.type = "button";
+            item.type =
+                "button";
 
             item.className =
                 "sugestao-item";
@@ -1298,19 +1391,29 @@ function gerarSugestoesAerodromos() {
             item.innerHTML = `
 
                 <span class="sugestao-titulo">
-                    ${escaparHtml(icao)}
+                    ${escaparHtml(
+                        icao
+                    )}
+
                     <span class="sugestao-separador">
                         —
                     </span>
-                    ${escaparHtml(nome)}
+
+                    ${escaparHtml(
+                        nome
+                    )}
                 </span>
 
                 <span class="sugestao-subtitulo">
-                    ${escaparHtml(cidade)}
+                    ${escaparHtml(
+                        cidade
+                    )}
                     ${
                         aero.uf
                             ? " - " +
-                              escaparHtml(aero.uf)
+                              escaparHtml(
+                                  aero.uf
+                              )
                             : ""
                     }
                 </span>
@@ -1331,6 +1434,15 @@ function gerarSugestoesAerodromos() {
             item.addEventListener(
                 "click",
                 function() {
+
+                    registrarEvento(
+                        "selecao_sugestao_aerodromo",
+                        {
+                            icao:
+                                icao
+                        }
+                    );
+
 
                     campoIcao.value =
                         icao;
@@ -1359,15 +1471,7 @@ function gerarSugestoesAerodromos() {
 
 
 // ==========================================
-// CONTROLE DAS SUGESTÕES
-// ==========================================
-
-let indiceSugestaoAeronave = -1;
-let indiceSugestaoAerodromo = -1;
-
-
-// ==========================================
-// FECHAR SUGESTÕES AERONAVES
+// FECHAR SUGESTÕES
 // ==========================================
 
 function fecharSugestoesAeronaves() {
@@ -1375,6 +1479,7 @@ function fecharSugestoesAeronaves() {
     if (!sugestoesAeronaves) {
         return;
     }
+
 
     sugestoesAeronaves.classList.add(
         "hidden"
@@ -1385,15 +1490,12 @@ function fecharSugestoesAeronaves() {
 }
 
 
-// ==========================================
-// FECHAR SUGESTÕES AERÓDROMOS
-// ==========================================
-
 function fecharSugestoesAerodromos() {
 
     if (!sugestoesAerodromos) {
         return;
     }
+
 
     sugestoesAerodromos.classList.add(
         "hidden"
@@ -1405,7 +1507,7 @@ function fecharSugestoesAerodromos() {
 
 
 // ==========================================
-// DESTACAR ITEM SELECIONADO
+// ITEM SELECIONADO
 // ==========================================
 
 function atualizarItemSelecionado(
@@ -1472,9 +1574,7 @@ function tecladoAeronaves(event) {
 
 
     if (!itens.length) {
-
         return;
-
     }
 
 
@@ -1594,9 +1694,7 @@ function tecladoAerodromos(event) {
 
 
     if (!itens.length) {
-
         return;
-
     }
 
 
@@ -1687,8 +1785,6 @@ function tecladoAerodromos(event) {
 // EVENTOS DE PESQUISA
 // ==========================================
 
-// AERONAVES
-
 if (btnPesquisar) {
 
     btnPesquisar.addEventListener(
@@ -1714,8 +1810,6 @@ if (campoMatricula) {
 
 }
 
-
-// AERÓDROMOS
 
 if (btnPesquisarIcao) {
 
@@ -1848,7 +1942,7 @@ const contadorFotos =
 
 
 // ==========================================
-// ABRIR FORMULÁRIO
+// ABRIR FORMULÁRIO DE FOTO
 // ==========================================
 
 if (btnAdicionarFoto) {
@@ -1866,6 +1960,15 @@ if (btnAdicionarFoto) {
                 return;
 
             }
+
+
+            registrarEvento(
+                "abrir_formulario_foto",
+                {
+                    matricula:
+                        aeronaveAtual.matricula
+                }
+            );
 
 
             formularioFoto.classList.remove(
@@ -1892,7 +1995,15 @@ if (btnCancelarFoto) {
 
     btnCancelarFoto.addEventListener(
         "click",
-        limparFormularioFoto
+        function() {
+
+            registrarEvento(
+                "cancelar_foto"
+            );
+
+            limparFormularioFoto();
+
+        }
     );
 
 }
@@ -1911,8 +2022,14 @@ if (campoLocalFoto) {
             campoLocalFoto.value =
                 campoLocalFoto.value
                     .toUpperCase()
-                    .replace(/[^A-Z]/g, "")
-                    .substring(0, 4);
+                    .replace(
+                        /[^A-Z]/g,
+                        ""
+                    )
+                    .substring(
+                        0,
+                        4
+                    );
 
         }
     );
@@ -1921,7 +2038,7 @@ if (campoLocalFoto) {
 
 
 // ==========================================
-// PREVIEW
+// PREVIEW DA FOTO
 // ==========================================
 
 if (campoFoto) {
@@ -2047,7 +2164,8 @@ function salvarFoto() {
 
             const novaFoto = {
 
-                id: Date.now(),
+                id:
+                    Date.now(),
 
                 matricula:
                     aeronaveAtual.matricula,
@@ -2095,22 +2213,23 @@ function salvarFoto() {
             }
 
 
+            registrarEvento(
+                "adicionar_fotografia",
+                {
+                    matricula:
+                        aeronaveAtual.matricula,
+
+                    icao:
+                        icao || "nao_informado"
+                }
+            );
+
+
             atualizarFotos();
 
             atualizarEstatisticasFotos();
 
             limparFormularioFoto();
-
-
-            registrarEventoAnalytics(
-                "foto_adicionada",
-                {
-                    matricula:
-                        aeronaveAtual.matricula,
-                    icao:
-                        icao || "nao_informado"
-                }
-            );
 
 
             alert(
@@ -2141,17 +2260,23 @@ function salvarFoto() {
 // LOCAL STORAGE
 // ==========================================
 
-function obterChaveFotos(matricula) {
+function obterChaveFotos(
+    matricula
+) {
 
     return (
         "leospotter_fotos_" +
-        normalizarMatricula(matricula)
+        normalizarMatricula(
+            matricula
+        )
     );
 
 }
 
 
-function carregarFotosAeronave(matricula) {
+function carregarFotosAeronave(
+    matricula
+) {
 
     const chave =
         obterChaveFotos(
@@ -2170,7 +2295,9 @@ function carregarFotosAeronave(matricula) {
         try {
 
             fotosAeronave =
-                JSON.parse(dados);
+                JSON.parse(
+                    dados
+                );
 
 
             if (
@@ -2286,7 +2413,7 @@ function atualizarFotos() {
 
 
 // ==========================================
-// ESTATÍSTICAS
+// ESTATÍSTICAS DO ACERVO
 // ==========================================
 
 function atualizarEstatisticasFotos() {
@@ -2335,7 +2462,9 @@ function atualizarEstatisticasFotos() {
             try {
 
                 const fotos =
-                    JSON.parse(dados);
+                    JSON.parse(
+                        dados
+                    );
 
 
                 if (
@@ -2389,7 +2518,9 @@ function atualizarEstatisticasFotos() {
 
         aeronavesComFotos.textContent =
             matriculasComFotos.size
-                .toLocaleString("pt-BR");
+                .toLocaleString(
+                    "pt-BR"
+                );
 
     }
 
@@ -2397,7 +2528,9 @@ function atualizarEstatisticasFotos() {
     if (totalFotos) {
 
         totalFotos.textContent =
-            total.toLocaleString("pt-BR");
+            total.toLocaleString(
+                "pt-BR"
+            );
 
     }
 
@@ -2462,17 +2595,18 @@ function criarGaleria() {
                 "click",
                 function() {
 
-                    registrarEventoAnalytics(
-                        "foto_visualizada",
+                    registrarEvento(
+                        "visualizar_fotografia",
                         {
                             matricula:
-                                foto.matricula,
-                            icao:
-                                foto.icao || "nao_informado"
+                                foto.matricula
                         }
                     );
 
-                    abrirFoto(foto);
+
+                    abrirFoto(
+                        foto
+                    );
 
                 }
             );
@@ -2651,7 +2785,9 @@ function removerGaleria() {
 // FORMATAR DATA
 // ==========================================
 
-function formatarData(data) {
+function formatarData(
+    data
+) {
 
     if (!data) {
 
@@ -2684,7 +2820,9 @@ function formatarData(data) {
 // VISUALIZAR FOTO
 // ==========================================
 
-function abrirFoto(foto) {
+function abrirFoto(
+    foto
+) {
 
     const janela =
         document.createElement(
@@ -2735,7 +2873,9 @@ function abrirFoto(foto) {
 // EXCLUIR FOTO
 // ==========================================
 
-function excluirFoto(id) {
+function excluirFoto(
+    id
+) {
 
     const confirmar =
         confirm(
@@ -2746,6 +2886,16 @@ function excluirFoto(id) {
     if (!confirmar) {
         return;
     }
+
+
+    const fotoExcluida =
+        fotosAeronave.find(
+            function(foto) {
+
+                return foto.id === id;
+
+            }
+        );
 
 
     fotosAeronave =
@@ -2763,6 +2913,21 @@ function excluirFoto(id) {
     atualizarFotos();
 
     atualizarEstatisticasFotos();
+
+
+    registrarEvento(
+        "excluir_fotografia",
+        {
+            matricula:
+                fotoExcluida
+                    ? fotoExcluida.matricula
+                    : (
+                        aeronaveAtual
+                            ? aeronaveAtual.matricula
+                            : "desconhecida"
+                    )
+        }
+    );
 
 }
 
@@ -2825,6 +2990,273 @@ function limparFormularioFoto() {
 
 
 // ==========================================
+// PREVISÕES DE AERONAVES
+// ==========================================
+
+function atualizarPrevisoesAeronaves() {
+
+    const lista =
+        document.getElementById(
+            "listaAeronaves"
+        );
+
+
+    if (!lista) {
+        return;
+    }
+
+
+    lista.innerHTML = "";
+
+
+    aeronaves.forEach(
+        function(aeronave) {
+
+            if (!aeronave.matricula) {
+                return;
+            }
+
+
+            const option =
+                document.createElement(
+                    "option"
+                );
+
+
+            option.value =
+                aeronave.matricula;
+
+
+            if (aeronave.modelo) {
+
+                option.label =
+                    aeronave.modelo;
+
+            }
+
+
+            lista.appendChild(
+                option
+            );
+
+        }
+    );
+
+}
+
+
+// ==========================================
+// PREVISÕES DE AERÓDROMOS
+// ==========================================
+
+function atualizarPrevisoesAerodromos() {
+
+    const lista =
+        document.getElementById(
+            "listaAerodromos"
+        );
+
+
+    if (!lista) {
+        return;
+    }
+
+
+    lista.innerHTML = "";
+
+
+    aerodromos.forEach(
+        function(aero) {
+
+            if (!aero.icao) {
+                return;
+            }
+
+
+            const option =
+                document.createElement(
+                    "option"
+                );
+
+
+            option.value =
+                aero.icao;
+
+
+            const nome =
+                aero.nome || "";
+
+            const cidade =
+                aero.municipio ||
+                aero.municipio_servido ||
+                aero.cidade ||
+                "";
+
+
+            if (nome && cidade) {
+
+                option.label =
+                    `${nome} - ${cidade}`;
+
+            }
+
+            else if (nome) {
+
+                option.label =
+                    nome;
+
+            }
+
+            else if (cidade) {
+
+                option.label =
+                    cidade;
+
+            }
+
+
+            lista.appendChild(
+                option
+            );
+
+        }
+    );
+
+}
+
+
+// ==========================================
+// LINKS EXTERNOS
+// ==========================================
+
+function configurarLinksExternos() {
+
+    const links =
+        document.querySelectorAll(
+            'a[href]'
+        );
+
+
+    links.forEach(
+        function(link) {
+
+            const href =
+                link.getAttribute(
+                    "href"
+                );
+
+
+            if (!href) {
+                return;
+            }
+
+
+            let tipo = null;
+
+
+            if (
+                href.includes(
+                    "instagram.com"
+                )
+            ) {
+
+                tipo =
+                    "instagram";
+
+            }
+
+            else if (
+                href.includes(
+                    "jetphotos.com"
+                )
+            ) {
+
+                tipo =
+                    "jetphotos";
+
+            }
+
+            else if (
+                href.includes(
+                    "planespotters.net"
+                )
+            ) {
+
+                tipo =
+                    "planespotters";
+
+            }
+
+            else if (
+                href.startsWith(
+                    "mailto:"
+                )
+            ) {
+
+                tipo =
+                    "email";
+
+            }
+
+
+            if (!tipo) {
+                return;
+            }
+
+
+            link.addEventListener(
+                "click",
+                function() {
+
+                    registrarEvento(
+                        "clique_link_externo",
+                        {
+                            destino:
+                                tipo
+                        }
+                    );
+
+                }
+            );
+
+        }
+    );
+
+}
+
+
+// ==========================================
+// CLIQUE NA LOGO
+// ==========================================
+
+function configurarLogo() {
+
+    const logo =
+        document.querySelector(
+            'a[href="#inicio"]'
+        );
+
+
+    if (!logo) {
+        return;
+    }
+
+
+    logo.addEventListener(
+        "click",
+        function() {
+
+            registrarEvento(
+                "voltar_inicio"
+            );
+
+        }
+    );
+
+}
+
+
+// ==========================================
 // INICIALIZAÇÃO
 // ==========================================
 
@@ -2832,135 +3264,29 @@ atualizarVersaoSite();
 
 atualizarEstatisticasFotos();
 
+configurarLinksExternos();
+
+configurarLogo();
+
+
+// Registrar carregamento da aplicação
+
+registrarEvento(
+    "leospotter_inicio",
+    {
+        versao:
+            VERSAO_SITE
+    }
+);
+
+
+// Carregar bases
+
 carregarAeronaves();
 
 carregarAerodromos();
 
 
 // ==========================================
-// PREENCHER PREVISÕES DE PESQUISA
+// FIM
 // ==========================================
-
-function atualizarPrevisoesPesquisa() {
-
-    // ------------------------------------------
-    // PREVISÕES DE AERONAVES
-    // ------------------------------------------
-
-    const listaAeronaves =
-        document.getElementById(
-            "listaAeronaves"
-        );
-
-
-    if (listaAeronaves) {
-
-        listaAeronaves.innerHTML = "";
-
-
-        aeronaves.forEach(
-            function(aeronave) {
-
-                if (!aeronave.matricula) {
-                    return;
-                }
-
-
-                const option =
-                    document.createElement(
-                        "option"
-                    );
-
-
-                option.value =
-                    aeronave.matricula;
-
-
-                if (aeronave.modelo) {
-
-                    option.label =
-                        aeronave.modelo;
-
-                }
-
-
-                listaAeronaves.appendChild(
-                    option
-                );
-
-            }
-        );
-
-    }
-
-
-    // ------------------------------------------
-    // PREVISÕES DE AERÓDROMOS
-    // ------------------------------------------
-
-    const listaAerodromos =
-        document.getElementById(
-            "listaAerodromos"
-        );
-
-
-    if (listaAerodromos) {
-
-        listaAerodromos.innerHTML = "";
-
-
-        aerodromos.forEach(
-            function(aero) {
-
-                if (!aero.icao) {
-                    return;
-                }
-
-
-                const option =
-                    document.createElement(
-                        "option"
-                    );
-
-
-                option.value =
-                    aero.icao;
-
-
-                const nome =
-                    aero.nome || "";
-
-                const cidade =
-                    aero.municipio ||
-                    aero.cidade ||
-                    "";
-
-
-                if (nome && cidade) {
-
-                    option.label =
-                        `${nome} - ${cidade}`;
-
-                } else if (nome) {
-
-                    option.label =
-                        nome;
-
-                } else if (cidade) {
-
-                    option.label =
-                        cidade;
-
-                }
-
-
-                listaAerodromos.appendChild(
-                    option
-                );
-
-            }
-        );
-
-    }
-
-}
