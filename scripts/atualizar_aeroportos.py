@@ -1,14 +1,3 @@
-# ==========================================
-# LeoSpotter
-# Atualização automática da base de aeródromos
-#
-# Fontes:
-# - ANAC / SIROS
-# - AISWEB / DECEA
-#
-# VERSÃO: 2.0.0
-# ==========================================
-
 import csv
 import io
 import json
@@ -20,12 +9,11 @@ from html import unescape
 from pathlib import Path
 
 
-# ==========================================
-# CONFIGURAÇÕES
-# ==========================================
+# ============================================================
+# CONFIGURAÇÃO
+# ============================================================
 
 BASE = Path("data/aeroportos.json")
-
 CURSOR = Path("data/aeroportos_cursor.json")
 
 SIROS = (
@@ -34,7 +22,6 @@ SIROS = (
 )
 
 LIMITE = 100
-
 INTERVALO = 0.5
 
 PRIORITARIOS = [
@@ -43,29 +30,16 @@ PRIORITARIOS = [
 ]
 
 
-# ==========================================
+# ============================================================
 # DOWNLOAD
-# ==========================================
+# ============================================================
 
 def baixar(url):
 
     requisicao = urllib.request.Request(
         url,
         headers={
-            "User-Agent": (
-                "Mozilla/5.0 "
-                "(Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 "
-                "(KHTML, like Gecko) "
-                "Chrome/131.0 Safari/537.36"
-            ),
-            "Accept": (
-                "text/html,"
-                "application/xhtml+xml,"
-                "application/xml;q=0.9,"
-                "*/*;q=0.8"
-            ),
-            "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+            "User-Agent": "Mozilla/5.0"
         }
     )
 
@@ -80,9 +54,9 @@ def baixar(url):
         )
 
 
-# ==========================================
-# LIMPEZA
-# ==========================================
+# ============================================================
+# FUNÇÕES AUXILIARES
+# ============================================================
 
 def limpar(valor):
 
@@ -108,399 +82,9 @@ def campo(registro, *nomes):
     return ""
 
 
-# ==========================================
-# NORMALIZAÇÃO DO HTML
-# ==========================================
-
-def limpar_html(conteudo):
-
-    texto = conteudo.decode(
-        "utf-8",
-        errors="replace"
-    )
-
-    texto = unescape(texto)
-
-    # Remover scripts
-    texto = re.sub(
-        r"<script\b.*?</script>",
-        " ",
-        texto,
-        flags=re.I | re.S
-    )
-
-    # Remover estilos
-    texto = re.sub(
-        r"<style\b.*?</style>",
-        " ",
-        texto,
-        flags=re.I | re.S
-    )
-
-    # Quebras de linha importantes
-    texto = re.sub(
-        r"<br\s*/?>",
-        "\n",
-        texto,
-        flags=re.I
-    )
-
-    texto = re.sub(
-        r"</(?:p|div|tr|td|th|li|h[1-6])>",
-        "\n",
-        texto,
-        flags=re.I
-    )
-
-    # Remover restante das tags
-    texto = re.sub(
-        r"<[^>]+>",
-        " ",
-        texto
-    )
-
-    # Entidades HTML restantes
-    texto = unescape(texto)
-
-    # Espaços
-    texto = re.sub(
-        r"[ \t]+",
-        " ",
-        texto
-    )
-
-    # Linhas vazias
-    texto = re.sub(
-        r"\n\s*\n+",
-        "\n",
-        texto
-    )
-
-    return texto.strip()
-
-
-# ==========================================
-# FREQUÊNCIAS
-# ==========================================
-
-def extrair_frequencias(texto):
-
-    frequencias = []
-
-    vistos = set()
-
-    # Exemplos esperados:
-    #
-    # COM - RÁDIO [5] [6] 120.800
-    # TWR [5] 118.300
-    # RÁDIO 123.450
-    #
-    padroes = [
-
-        r"(?:COM\s*-\s*)?"
-        r"([A-ZÀ-Ú0-9 /.\-]{2,50}?)"
-        r"(?:\s+\[\d+\])+"
-        r"\s+"
-        r"(\d{3}\.\d{3})",
-
-        r"(?:COM\s*-\s*)?"
-        r"([A-ZÀ-Ú0-9 /.\-]{2,50}?)"
-        r"\s+"
-        r"(\d{3}\.\d{3})",
-
-    ]
-
-    for padrao in padroes:
-
-        encontrados = re.findall(
-            padrao,
-            texto.upper()
-        )
-
-        for orgao, valor in encontrados:
-
-            orgao = re.sub(
-                r"\s+",
-                " ",
-                orgao
-            ).strip()
-
-            valor = valor.strip()
-
-            # Evitar capturar números que não sejam
-            # frequências aeronáuticas válidas.
-            try:
-
-                frequencia = float(
-                    valor
-                )
-
-                if (
-                    frequencia < 118.000
-                    or frequencia > 137.000
-                ):
-
-                    continue
-
-            except ValueError:
-
-                continue
-
-            chave = (
-                orgao,
-                valor
-            )
-
-            if chave in vistos:
-
-                continue
-
-            vistos.add(
-                chave
-            )
-
-            frequencias.append({
-
-                "orgao": orgao,
-
-                "valor": valor,
-
-                "observacao": ""
-
-            })
-
-    return frequencias
-
-
-# ==========================================
-# PISTAS
-# ==========================================
-
-def extrair_pistas(texto):
-
-    pistas = []
-
-    vistos = set()
-
-    texto_upper = texto.upper()
-
-    # Formatos aproximados encontrados em
-    # páginas ROTAER / AISWEB.
-    padroes = [
-
-        # 09/27 1500 X 30 ASP 12/F/B/W/T
-        r"\b(\d{2})\s*/\s*(\d{2})"
-        r".{0,300}?"
-        r"(\d{3,5})\s*[Xx]\s*(\d{2,4})"
-        r".{0,150}?"
-        r"\b([A-Z0-9]{2,10})\b"
-        r".{0,100}?"
-        r"(\d{1,3}/[A-Z0-9/]+)",
-
-        # 09 - 27 ... 1500 X 30
-        r"\b(\d{2})\s*-\s*(\d{2})"
-        r".{0,300}?"
-        r"(\d{3,5})\s*[Xx]\s*(\d{2,4})"
-        r".{0,150}?"
-        r"\b([A-Z0-9]{2,10})\b"
-        r".{0,100}?"
-        r"(\d{1,3}/[A-Z0-9/]+)",
-
-    ]
-
-    for padrao in padroes:
-
-        encontrados = re.findall(
-            padrao,
-            texto_upper,
-            flags=re.S
-        )
-
-        for valores in encontrados:
-
-            if len(valores) != 6:
-
-                continue
-
-            cabeceira_1 = valores[0]
-            cabeceira_2 = valores[1]
-            comprimento = valores[2]
-            largura = valores[3]
-            piso = valores[4]
-            resistencia = valores[5]
-
-            identificacao = (
-                cabeceira_1
-                + "/"
-                + cabeceira_2
-            )
-
-            chave = (
-                identificacao,
-                comprimento,
-                largura,
-                piso,
-                resistencia
-            )
-
-            if chave in vistos:
-
-                continue
-
-            vistos.add(
-                chave
-            )
-
-            pistas.append({
-
-                "identificacao":
-                    identificacao,
-
-                "piso":
-                    piso,
-
-                "dimensoes":
-                    (
-                        comprimento
-                        + " x "
-                        + largura
-                        + " m"
-                    ),
-
-                "resistencia":
-                    resistencia
-
-            })
-
-    return pistas
-
-
-# ==========================================
-# DISTÂNCIAS DECLARADAS
-# ==========================================
-
-def extrair_distancias(texto):
-
-    distancias = []
-
-    vistos = set()
-
-    # Procura conjuntos de cinco números:
-    #
-    # RWY TORA TODA ASDA LDA
-    #
-    # Exemplo:
-    # 09 1500 1500 1500 1500
-
-    padrao = (
-        r"\b(\d{2})\s+"
-        r"(\d{3,5})\s+"
-        r"(\d{3,5})\s+"
-        r"(\d{3,5})\s+"
-        r"(\d{3,5})\b"
-    )
-
-    encontrados = re.findall(
-        padrao,
-        texto
-    )
-
-    for valores in encontrados:
-
-        if valores in vistos:
-
-            continue
-
-        vistos.add(
-            valores
-        )
-
-        try:
-
-            rwy = valores[0]
-
-            tora = int(
-                valores[1]
-            )
-
-            toda = int(
-                valores[2]
-            )
-
-            asda = int(
-                valores[3]
-            )
-
-            lda = int(
-                valores[4]
-            )
-
-        except ValueError:
-
-            continue
-
-        distancias.append({
-
-            "rwy": rwy,
-
-            "tora": tora,
-
-            "toda": toda,
-
-            "asda": asda,
-
-            "lda": lda
-
-        })
-
-    return distancias
-
-
-# ==========================================
-# DATA AISWEB
-# ==========================================
-
-def extrair_data(texto):
-
-    padroes = [
-
-        r"ÚLTIMA\s+ATUALIZAÇÃO"
-        r"\s*:?\s*"
-        r"(\d{2}/\d{2}/\d{4})",
-
-        r"ULTIMA\s+ATUALIZAÇÃO"
-        r"\s*:?\s*"
-        r"(\d{2}/\d{2}/\d{4})",
-
-        r"ATUALIZAÇÃO"
-        r"\s*:?\s*"
-        r"(\d{2}/\d{2}/\d{4})",
-
-        r"ATUALIZACAO"
-        r"\s*:?\s*"
-        r"(\d{2}/\d{2}/\d{4})",
-
-    ]
-
-    texto_upper = texto.upper()
-
-    for padrao in padroes:
-
-        resultado = re.search(
-            padrao,
-            texto_upper
-        )
-
-        if resultado:
-
-            return resultado.group(1)
-
-    return None
-
-
-# ==========================================
-# CONSULTAR AISWEB
-# ==========================================
+# ============================================================
+# CONSULTA AISWEB
+# ============================================================
 
 def consultar_aisweb(icao):
 
@@ -511,209 +95,275 @@ def consultar_aisweb(icao):
         + "&i=aerodromos"
     )
 
-    status, conteudo = baixar(
-        url
+    status, conteudo = baixar(url)
+
+    texto = conteudo.decode(
+        "utf-8",
+        errors="replace"
     )
 
-    if status < 200 or status >= 300:
+    texto = unescape(texto)
 
-        raise RuntimeError(
-            "HTTP "
-            + str(status)
-        )
-
-    texto = limpar_html(
-        conteudo
+    texto = re.sub(
+        r"<script.*?</script>",
+        " ",
+        texto,
+        flags=re.I | re.S
     )
 
-    if not texto:
+    texto = re.sub(
+        r"<style.*?</style>",
+        " ",
+        texto,
+        flags=re.I | re.S
+    )
 
-        raise RuntimeError(
-            "Resposta AISWEB vazia"
-        )
+    texto = re.sub(
+        r"<br\s*/?>",
+        "\n",
+        texto,
+        flags=re.I
+    )
+
+    texto = re.sub(
+        r"</p>|</div>|</tr>|</li>|</h[1-6]>",
+        "\n",
+        texto,
+        flags=re.I
+    )
+
+    texto = re.sub(
+        r"<[^>]+>",
+        " ",
+        texto
+    )
+
+    texto = re.sub(
+        r"[ \t]+",
+        " ",
+        texto
+    )
+
+    texto = re.sub(
+        r"\n\s*\n+",
+        "\n",
+        texto
+    )
+
+    texto = texto.strip()
 
     texto_upper = texto.upper()
 
-    # ======================================
-    # VERIFICAR SE A PÁGINA É DO AERÓDROMO
-    # ======================================
-
-    encontrou_icao = bool(
-        re.search(
-            r"\b"
-            + re.escape(icao.upper())
-            + r"\b",
-            texto_upper
-        )
-    )
-
-    encontrou_conteudo_aerodromo = any(
-
-        termo in texto_upper
-
-        for termo in [
-
-            "ROTAER",
-            "PISTA",
-            "FREQUÊNCIA",
-            "FREQUENCIA",
-            "DISTÂNCIAS DECLARADAS",
-            "DISTANCIAS DECLARADAS",
-            "AERÓDROMO",
-            "AERODROMO",
-
-        ]
-
-    )
-
-    if not encontrou_icao and not encontrou_conteudo_aerodromo:
-
-        raise RuntimeError(
-            "Página AISWEB não corresponde "
-            "a um aeródromo"
-        )
-
-    # ======================================
-    # EXTRAÇÃO
-    # ======================================
-
-    pistas = extrair_pistas(
-        texto
-    )
-
-    frequencias = extrair_frequencias(
-        texto
-    )
-
-    distancias = extrair_distancias(
-        texto
-    )
-
-    atualizacao = extrair_data(
-        texto
-    )
-
-    # ======================================
-    # RESULTADO
-    # ======================================
-
     resultado = {
 
-        "pistas":
-            pistas,
+        "pistas": [],
 
-        "frequencias":
-            frequencias,
+        "frequencias": [],
 
-        "distancias_declaradas":
-            distancias,
+        "distancias_declaradas": [],
 
-        "atualizacao":
-            atualizacao
+        "atualizacao": None
 
     }
 
-    # ======================================
-    # DIAGNÓSTICO
-    # ======================================
+    # ========================================================
+    # PISTAS
+    # ========================================================
+
+    padrao_pista = re.search(
+
+        r"(\d{2})\s*-\s*.*?"
+        r"\(\s*"
+        r"(\d+)\s*[xX]\s*(\d+)"
+        r"\s+([A-Z0-9]+)"
+        r"\s+([0-9]+/[A-Z0-9/]+)"
+        r".*?"
+        r"-\s*(\d{2})",
+
+        texto_upper,
+
+        re.S
+
+    )
+
+    if padrao_pista:
+
+        resultado["pistas"].append({
+
+            "identificacao":
+                padrao_pista.group(1)
+                + "/"
+                + padrao_pista.group(6),
+
+            "piso":
+                padrao_pista.group(4),
+
+            "dimensoes":
+                padrao_pista.group(2)
+                + " x "
+                + padrao_pista.group(3)
+                + " m",
+
+            "resistencia":
+                padrao_pista.group(5)
+
+        })
+
+    # ========================================================
+    # FREQUÊNCIAS
+    # ========================================================
+
+    frequencias = re.findall(
+
+        r"(?:COM\s*-\s*)?"
+        r"([A-ZÀ-Ú0-9 /-]{2,40})"
+        r"\s+\[\d+\]"
+        r"(?:\s+\[\d+\])*"
+        r"\s+"
+        r"(\d{3}\.\d{3})",
+
+        texto_upper
+
+    )
+
+    for orgao, valor in frequencias:
+
+        orgao = orgao.strip()
+
+        existe = any(
+
+            frequencia["orgao"] == orgao
+            and
+            frequencia["valor"] == valor
+
+            for frequencia
+            in resultado["frequencias"]
+
+        )
+
+        if not existe:
+
+            resultado["frequencias"].append({
+
+                "orgao":
+                    orgao,
+
+                "valor":
+                    valor,
+
+                "observacao":
+                    ""
+
+            })
+
+    # ========================================================
+    # DISTÂNCIAS DECLARADAS
+    # ========================================================
+
+    encontrados = re.findall(
+
+        r"(\d{2})\s+"
+        r"(\d{3,5})\s+"
+        r"(\d{3,5})\s+"
+        r"(\d{3,5})\s+"
+        r"(\d{3,5})",
+
+        texto
+
+    )
+
+    vistos = set()
+
+    for valores in encontrados:
+
+        if valores in vistos:
+
+            continue
+
+        vistos.add(valores)
+
+        (
+            rwy,
+            tora,
+            toda,
+            asda,
+            lda
+        ) = valores
+
+        resultado[
+            "distancias_declaradas"
+        ].append({
+
+            "rwy":
+                rwy,
+
+            "tora":
+                int(tora),
+
+            "toda":
+                int(toda),
+
+            "asda":
+                int(asda),
+
+            "lda":
+                int(lda)
+
+        })
+
+    # ========================================================
+    # DATA AISWEB
+    # ========================================================
+
+    padrao_data = re.search(
+
+        r"ÚLTIMA ATUALIZAÇÃO"
+        r"\s*:?\s*"
+        r"(\d{2}/\d{2}/\d{4})",
+
+        texto_upper
+
+    )
+
+    if padrao_data:
+
+        resultado["atualizacao"] = (
+            padrao_data.group(1)
+        )
+
+    # ========================================================
+    # VALIDAÇÃO
+    # ========================================================
+
+    if not resultado["pistas"]:
+
+        raise RuntimeError(
+            "Nenhuma pista encontrada."
+        )
+
+    if not resultado["frequencias"]:
+
+        raise RuntimeError(
+            "Nenhuma frequência encontrada."
+        )
 
     print(
         "  HTTP:",
         status,
         "| pistas:",
-        len(pistas),
+        len(resultado["pistas"]),
         "| frequências:",
-        len(frequencias),
+        len(resultado["frequencias"]),
         "| distâncias:",
-        len(distancias),
-        "| atualização:",
-        atualizacao or "não encontrada"
+        len(resultado["distancias_declaradas"])
     )
 
     return resultado
 
 
-# ==========================================
-# ATUALIZAR DADOS DO AERÓDROMO
-# ==========================================
-
-def aplicar_dados_aeroporto(
-    aeroporto,
-    dados
-):
-
-    alterou = False
-
-    # --------------------------------------
-    # PISTAS
-    # --------------------------------------
-
-    if dados["pistas"]:
-
-        aeroporto["pistas"] = (
-            dados["pistas"]
-        )
-
-        alterou = True
-
-    # --------------------------------------
-    # FREQUÊNCIAS
-    # --------------------------------------
-
-    if dados["frequencias"]:
-
-        aeroporto["frequencias"] = (
-            dados["frequencias"]
-        )
-
-        alterou = True
-
-    # --------------------------------------
-    # DISTÂNCIAS
-    # --------------------------------------
-
-    if dados[
-        "distancias_declaradas"
-    ]:
-
-        aeroporto[
-            "distancias_declaradas"
-        ] = dados[
-            "distancias_declaradas"
-        ]
-
-        alterou = True
-
-    # --------------------------------------
-    # DATA
-    # --------------------------------------
-
-    if dados["atualizacao"]:
-
-        aeroporto[
-            "ultima_atualizacao_aisweb"
-        ] = dados[
-            "atualizacao"
-        ]
-
-        alterou = True
-
-    elif alterou:
-
-        aeroporto[
-            "ultima_atualizacao_aisweb"
-        ] = datetime.now(
-            timezone.utc
-        ).strftime(
-            "%Y-%m-%d"
-        )
-
-    return alterou
-
-
-# ==========================================
+# ============================================================
 # MAIN
-# ==========================================
+# ============================================================
 
 def main():
 
@@ -730,24 +380,19 @@ def main():
     )
 
     print(
-        "VERSÃO 2.0.0"
-    )
-
-    print(
         "========================================"
     )
 
     print()
 
-    # ======================================
-    # BASE EXISTENTE
-    # ======================================
+    # ========================================================
+    # CARREGAR BASE
+    # ========================================================
 
     if not BASE.exists():
 
         raise RuntimeError(
-            "data/aeroportos.json "
-            "não encontrado."
+            "data/aeroportos.json não encontrado."
         )
 
     with BASE.open(
@@ -765,17 +410,18 @@ def main():
     ):
 
         raise RuntimeError(
-            "aeroportos.json não contém "
-            "uma lista."
+            "aeroportos.json não contém uma lista."
         )
 
     if len(aeroportos) < 7000:
 
         raise RuntimeError(
+
             "ERRO CRÍTICO: base possui apenas "
             + str(len(aeroportos))
             + " registros. "
             "Mínimo esperado: 7000."
+
         )
 
     print(
@@ -786,9 +432,9 @@ def main():
 
     print()
 
-    # ======================================
+    # ========================================================
     # ÍNDICE
-    # ======================================
+    # ========================================================
 
     indice = {}
 
@@ -807,9 +453,9 @@ def main():
 
             indice[icao] = aeroporto
 
-    # ======================================
+    # ========================================================
     # SIROS / ANAC
-    # ======================================
+    # ========================================================
 
     print(
         "========================================"
@@ -834,9 +480,7 @@ def main():
 
     registros = list(
         csv.DictReader(
-            io.StringIO(
-                texto_csv
-            ),
+            io.StringIO(texto_csv),
             delimiter=";"
         )
     )
@@ -858,10 +502,15 @@ def main():
     for registro in registros:
 
         icao = campo(
+
             registro,
+
             "SIGLA ICAO AERÓDROMO",
+
             "ICAO",
+
             "ICAO AERÓDROMO"
+
         ).upper()
 
         if not re.fullmatch(
@@ -879,13 +528,17 @@ def main():
 
             aeroporto = {
 
-                "icao": icao,
+                "icao":
+                    icao,
 
-                "pistas": [],
+                "pistas":
+                    [],
 
-                "frequencias": [],
+                "frequencias":
+                    [],
 
-                "distancias_declaradas": [],
+                "distancias_declaradas":
+                    [],
 
                 "ultima_atualizacao_aisweb":
                     None
@@ -955,9 +608,9 @@ def main():
 
     print()
 
-    # ======================================
+    # ========================================================
     # CURSOR
-    # ======================================
+    # ========================================================
 
     cursor = 0
 
@@ -966,16 +619,20 @@ def main():
         try:
 
             dados_cursor = json.loads(
+
                 CURSOR.read_text(
                     encoding="utf-8"
                 )
+
             )
 
             cursor = int(
+
                 dados_cursor.get(
                     "cursor",
                     0
                 )
+
             )
 
         except Exception:
@@ -1017,27 +674,36 @@ def main():
         inicio = 0
 
     quantidade_normal = max(
+
         0,
-        LIMITE - len(
-            prioritarios
-        )
+
+        LIMITE
+        -
+        len(prioritarios)
+
     )
 
     lote_normal = normais[
+
         inicio:
         inicio + quantidade_normal
+
     ]
 
     lote = (
+
         prioritarios
         +
         lote_normal
+
     )
 
     proximo_cursor = (
+
         inicio
         +
         len(lote_normal)
+
     )
 
     if normais:
@@ -1046,16 +712,16 @@ def main():
             normais
         )
 
-    # ======================================
+    # ========================================================
     # AISWEB
-    # ======================================
+    # ========================================================
 
     print(
         "========================================"
     )
 
     print(
-        "AISWEB / DECEA"
+        "AISWEB"
     )
 
     print(
@@ -1084,36 +750,14 @@ def main():
 
     print()
 
-    # ======================================
-    # CONTADORES
-    # ======================================
-
-    consultas = 0
-
-    respostas_ok = 0
+    sucesso = 0
 
     erros = 0
-
-    atualizados = 0
-
-    pistas_atualizadas = 0
-
-    frequencias_atualizadas = 0
-
-    distancias_atualizadas = 0
-
-    sem_dados_adicionais = 0
-
-    # ======================================
-    # CONSULTAS
-    # ======================================
 
     for numero, icao in enumerate(
         lote,
         start=1
     ):
-
-        consultas += 1
 
         print(
             f"[{numero}/{len(lote)}] {icao}"
@@ -1125,67 +769,58 @@ def main():
                 icao
             )
 
-            respostas_ok += 1
-
             aeroporto = indice[
                 icao
             ]
 
-            tinha_pistas = bool(
-                dados["pistas"]
-            )
+            aeroporto[
+                "pistas"
+            ] = dados[
+                "pistas"
+            ]
 
-            tinha_frequencias = bool(
-                dados["frequencias"]
-            )
+            aeroporto[
+                "frequencias"
+            ] = dados[
+                "frequencias"
+            ]
 
-            tinha_distancias = bool(
+            aeroporto[
+                "distancias_declaradas"
+            ] = dados[
+                "distancias_declaradas"
+            ]
+
+            aeroporto[
+                "ultima_atualizacao_aisweb"
+            ] = (
+
                 dados[
-                    "distancias_declaradas"
+                    "atualizacao"
                 ]
-            )
 
-            alterou = aplicar_dados_aeroporto(
-                aeroporto,
-                dados
-            )
+                or
 
-            if tinha_pistas:
-
-                pistas_atualizadas += 1
-
-            if tinha_frequencias:
-
-                frequencias_atualizadas += 1
-
-            if tinha_distancias:
-
-                distancias_atualizadas += 1
-
-            if alterou:
-
-                atualizados += 1
-
-                print(
-                    "  ✓ dados atualizados"
+                datetime.now(
+                    timezone.utc
+                ).strftime(
+                    "%Y-%m-%d"
                 )
 
-            else:
+            )
 
-                sem_dados_adicionais += 1
+            sucesso += 1
 
-                print(
-                    "  • página válida, "
-                    "mas nenhum dado adicional "
-                    "foi extraído"
-                )
+            print(
+                "  ✓ atualizado"
+            )
 
         except Exception as erro:
 
             erros += 1
 
             print(
-                "  ! erro real:",
+                "  ! erro:",
                 erro
             )
 
@@ -1197,13 +832,14 @@ def main():
             INTERVALO
         )
 
-    # ======================================
+    # ========================================================
     # ORDENAR
-    # ======================================
+    # ========================================================
 
     aeroportos.sort(
 
         key=lambda aeroporto:
+
         limpar(
             aeroporto.get(
                 "icao",
@@ -1213,16 +849,20 @@ def main():
 
     )
 
-    # ======================================
+    # ========================================================
     # SALVAR BASE
-    # ======================================
+    # ========================================================
 
     BASE.write_text(
 
         json.dumps(
+
             aeroportos,
+
             ensure_ascii=False,
+
             indent=2
+
         )
         + "\n",
 
@@ -1230,9 +870,9 @@ def main():
 
     )
 
-    # ======================================
+    # ========================================================
     # SALVAR CURSOR
-    # ======================================
+    # ========================================================
 
     CURSOR.write_text(
 
@@ -1264,9 +904,9 @@ def main():
 
     )
 
-    # ======================================
-    # VALIDAÇÕES
-    # ======================================
+    # ========================================================
+    # VALIDAÇÕES FINAIS
+    # ========================================================
 
     if len(aeroportos) < 7000:
 
@@ -1282,20 +922,18 @@ def main():
     if "SSCL" not in indice:
 
         raise RuntimeError(
-            "ERRO CRÍTICO: SSCL "
-            "não encontrado."
+            "ERRO CRÍTICO: SSCL não encontrado."
         )
 
     if "SBUR" not in indice:
 
         raise RuntimeError(
-            "ERRO CRÍTICO: SBUR "
-            "não encontrado."
+            "ERRO CRÍTICO: SBUR não encontrado."
         )
 
-    # ======================================
+    # ========================================================
     # RESULTADO
-    # ======================================
+    # ========================================================
 
     print()
 
@@ -1318,42 +956,17 @@ def main():
 
     print(
         "Consultas AISWEB:",
-        consultas
+        len(lote)
     )
 
     print(
-        "Respostas HTTP válidas:",
-        respostas_ok
+        "Sucesso AISWEB:",
+        sucesso
     )
 
     print(
-        "Erros reais:",
+        "Erros AISWEB:",
         erros
-    )
-
-    print(
-        "Aeródromos atualizados:",
-        atualizados
-    )
-
-    print(
-        "Com pistas:",
-        pistas_atualizadas
-    )
-
-    print(
-        "Com frequências:",
-        frequencias_atualizadas
-    )
-
-    print(
-        "Com distâncias:",
-        distancias_atualizadas
-    )
-
-    print(
-        "Sem dados adicionais:",
-        sem_dados_adicionais
     )
 
     print(
@@ -1383,9 +996,9 @@ def main():
         "========================================"
 
 
-# ==========================================
+# ============================================================
 # EXECUÇÃO
-# ==========================================
+# ============================================================
 
 if __name__ == "__main__":
 
