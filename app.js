@@ -22,6 +22,34 @@ let aerodromos = [];
 
 
 // ==========================================
+// GOOGLE ANALYTICS
+// ==========================================
+
+function registrarEventoAnalytics(
+    nomeEvento,
+    parametros = {}
+) {
+
+    if (typeof gtag !== "function") {
+
+        console.warn(
+            "Google Analytics ainda não está disponível."
+        );
+
+        return;
+
+    }
+
+    gtag(
+        "event",
+        nomeEvento,
+        parametros
+    );
+
+}
+
+
+// ==========================================
 // ELEMENTOS DA PÁGINA
 // ==========================================
 
@@ -115,6 +143,8 @@ async function carregarAeronaves() {
             `Base de aeronaves carregada: ${aeronaves.length} registro(s)`
         );
 
+        atualizarPrevisoesPesquisa();
+
     } catch (erro) {
 
         console.error(
@@ -152,6 +182,8 @@ async function carregarAerodromos() {
         console.log(
             `Base de aeródromos carregada: ${aerodromos.length} registro(s)`
         );
+
+        atualizarPrevisoesPesquisa();
 
     } catch (erro) {
 
@@ -228,9 +260,7 @@ function pesquisarAeronave() {
             matriculaDigitada
         );
 
-
     fecharSugestoesAeronaves();
-
 
     if (resultado) {
         resultado.classList.add("hidden");
@@ -240,7 +270,6 @@ function pesquisarAeronave() {
         naoEncontrada.classList.add("hidden");
     }
 
-
     if (!matricula) {
 
         campoMatricula.focus();
@@ -248,7 +277,6 @@ function pesquisarAeronave() {
         return;
 
     }
-
 
     const aeronave =
         aeronaves.find(function(item) {
@@ -264,14 +292,37 @@ function pesquisarAeronave() {
 
     if (aeronave) {
 
+        registrarEventoAnalytics(
+            "pesquisa_aeronave",
+            {
+                matricula:
+                    aeronave.matricula || matricula,
+                resultado:
+                    "encontrado"
+            }
+        );
+
         mostrarAeronave(aeronave);
 
     } else {
 
-        mostrarNaoEncontrada(
+        const matriculaPesquisa =
             matriculaDigitada
                 .trim()
-                .toUpperCase()
+                .toUpperCase();
+
+        registrarEventoAnalytics(
+            "pesquisa_aeronave",
+            {
+                matricula:
+                    matriculaPesquisa,
+                resultado:
+                    "nao_encontrado"
+            }
+        );
+
+        mostrarNaoEncontrada(
+            matriculaPesquisa
         );
 
     }
@@ -523,9 +574,32 @@ function pesquisarAerodromo() {
 
     if (aero) {
 
+        registrarEventoAnalytics(
+            "pesquisa_aerodromo",
+            {
+                termo:
+                    termoDigitado,
+                icao:
+                    aero.icao || "",
+                resultado:
+                    "encontrado"
+            }
+        );
+
         mostrarAerodromo(aero);
 
     } else {
+
+        registrarEventoAnalytics(
+            "pesquisa_aerodromo",
+            {
+                termo:
+                    termoDigitado,
+                resultado:
+                    "nao_encontrado"
+            }
+        );
+
 
         const elemento =
             document.getElementById(
@@ -590,6 +664,21 @@ function mostrarAerodromo(aero) {
             "aerodromoUf"
         );
 
+    const aerodromoElevacao =
+        document.getElementById(
+            "aerodromoElevacao"
+        );
+
+    const aerodromoOperacaoDiurna =
+        document.getElementById(
+            "aerodromoOperacaoDiurna"
+        );
+
+    const aerodromoOperacaoNoturna =
+        document.getElementById(
+            "aerodromoOperacaoNoturna"
+        );
+
 
     if (resultadoIcao) {
 
@@ -630,6 +719,35 @@ function mostrarAerodromo(aero) {
 
         aerodromoUf.textContent =
             aero.uf || "—";
+
+    }
+
+
+    if (aerodromoElevacao) {
+
+        aerodromoElevacao.textContent =
+            aero.elevacao ||
+            aero.elevacao_m ||
+            aero.elevation ||
+            "—";
+
+    }
+
+
+    if (aerodromoOperacaoDiurna) {
+
+        aerodromoOperacaoDiurna.textContent =
+            aero.operacao_diurna ||
+            "—";
+
+    }
+
+
+    if (aerodromoOperacaoNoturna) {
+
+        aerodromoOperacaoNoturna.textContent =
+            aero.operacao_noturna ||
+            "—";
 
     }
 
@@ -1167,7 +1285,8 @@ function gerarSugestoesAerodromos() {
                 aero.icao || "—";
 
             const nome =
-                aero.nome || "Nome não informado";
+                aero.nome ||
+                "Nome não informado";
 
             const cidade =
                 aero.municipio_servido ||
@@ -1365,6 +1484,7 @@ function tecladoAeronaves(event) {
 
         indiceSugestaoAeronave++;
 
+
         if (
             indiceSugestaoAeronave >=
             itens.length
@@ -1388,6 +1508,7 @@ function tecladoAeronaves(event) {
         event.preventDefault();
 
         indiceSugestaoAeronave--;
+
 
         if (
             indiceSugestaoAeronave < 0
@@ -1512,7 +1633,7 @@ function tecladoAerodromos(event) {
 
 
         if (
-            indiceSugestaoAerodromos < 0
+            indiceSugestaoAerodromo < 0
         ) {
 
             indiceSugestaoAerodromo =
@@ -1981,6 +2102,17 @@ function salvarFoto() {
             limparFormularioFoto();
 
 
+            registrarEventoAnalytics(
+                "foto_adicionada",
+                {
+                    matricula:
+                        aeronaveAtual.matricula,
+                    icao:
+                        icao || "nao_informado"
+                }
+            );
+
+
             alert(
                 "Fotografia adicionada com sucesso!"
             );
@@ -2329,6 +2461,16 @@ function criarGaleria() {
             imagem.addEventListener(
                 "click",
                 function() {
+
+                    registrarEventoAnalytics(
+                        "foto_visualizada",
+                        {
+                            matricula:
+                                foto.matricula,
+                            icao:
+                                foto.icao || "nao_informado"
+                        }
+                    );
 
                     abrirFoto(foto);
 
@@ -2694,6 +2836,7 @@ carregarAeronaves();
 
 carregarAerodromos();
 
+
 // ==========================================
 // PREENCHER PREVISÕES DE PESQUISA
 // ==========================================
@@ -2704,29 +2847,50 @@ function atualizarPrevisoesPesquisa() {
     // PREVISÕES DE AERONAVES
     // ------------------------------------------
 
-    const listaAeronaves = document.getElementById("listaAeronaves");
+    const listaAeronaves =
+        document.getElementById(
+            "listaAeronaves"
+        );
+
 
     if (listaAeronaves) {
 
         listaAeronaves.innerHTML = "";
 
-        aeronaves.forEach(function(aeronave) {
 
-            if (!aeronave.matricula) {
-                return;
+        aeronaves.forEach(
+            function(aeronave) {
+
+                if (!aeronave.matricula) {
+                    return;
+                }
+
+
+                const option =
+                    document.createElement(
+                        "option"
+                    );
+
+
+                option.value =
+                    aeronave.matricula;
+
+
+                if (aeronave.modelo) {
+
+                    option.label =
+                        aeronave.modelo;
+
+                }
+
+
+                listaAeronaves.appendChild(
+                    option
+                );
+
             }
+        );
 
-            const option = document.createElement("option");
-
-            option.value = aeronave.matricula;
-
-            if (aeronave.modelo) {
-                option.label = aeronave.modelo;
-            }
-
-            listaAeronaves.appendChild(option);
-
-        });
     }
 
 
@@ -2734,43 +2898,69 @@ function atualizarPrevisoesPesquisa() {
     // PREVISÕES DE AERÓDROMOS
     // ------------------------------------------
 
-    const listaAerodromos = document.getElementById("listaAerodromos");
+    const listaAerodromos =
+        document.getElementById(
+            "listaAerodromos"
+        );
+
 
     if (listaAerodromos) {
 
         listaAerodromos.innerHTML = "";
 
-        aerodromos.forEach(function(aero) {
 
-            if (!aero.icao) {
-                return;
+        aerodromos.forEach(
+            function(aero) {
+
+                if (!aero.icao) {
+                    return;
+                }
+
+
+                const option =
+                    document.createElement(
+                        "option"
+                    );
+
+
+                option.value =
+                    aero.icao;
+
+
+                const nome =
+                    aero.nome || "";
+
+                const cidade =
+                    aero.municipio ||
+                    aero.cidade ||
+                    "";
+
+
+                if (nome && cidade) {
+
+                    option.label =
+                        `${nome} - ${cidade}`;
+
+                } else if (nome) {
+
+                    option.label =
+                        nome;
+
+                } else if (cidade) {
+
+                    option.label =
+                        cidade;
+
+                }
+
+
+                listaAerodromos.appendChild(
+                    option
+                );
+
             }
+        );
 
-            const option = document.createElement("option");
-
-            option.value = aero.icao;
-
-            // Mostra informações úteis na previsão
-            const nome = aero.nome || "";
-            const cidade = aero.municipio || aero.cidade || "";
-
-            if (nome && cidade) {
-
-                option.label = `${nome} - ${cidade}`;
-
-            } else if (nome) {
-
-                option.label = nome;
-
-            } else if (cidade) {
-
-                option.label = cidade;
-
-            }
-
-            listaAerodromos.appendChild(option);
-
-        });
     }
 
 }
