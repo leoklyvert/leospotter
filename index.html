@@ -2,7 +2,11 @@
 <html lang="pt-BR">
 
 <head>
-
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0b5ed7">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="LeoSpotter">
     <meta charset="UTF-8">
 
     <meta
@@ -1031,7 +1035,22 @@
          ========================================== -->
 
     <script src="app.js"></script>
-
+    <script>
+if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./service-worker.js")
+            .then(() => {
+                console.log("LeoSpotter: Service Worker registrado.");
+            })
+            .catch(erro => {
+                console.error(
+                    "LeoSpotter: erro ao registrar Service Worker:",
+                    erro
+                );
+            });
+    });
+}
+</script>
 
 </body>
 
