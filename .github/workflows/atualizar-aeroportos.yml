@@ -2,6 +2,7 @@ name: Atualizar aeroportos
 
 on:
   workflow_dispatch:
+
   schedule:
     - cron: "0 3 * * 1"
 
@@ -9,16 +10,28 @@ permissions:
   contents: write
 
 jobs:
+
   atualizar:
+
     runs-on: ubuntu-latest
-    timeout-minutes: 300
 
     steps:
 
-      - name: Baixar repositorio
+      # ============================================================
+      # CHECKOUT
+      # ============================================================
+
+      - name: Baixar repositório
+
         uses: actions/checkout@v4
 
-      - name: Atualizar base ANAC e AISWEB
+
+      # ============================================================
+      # ATUALIZAR BASE
+      # ============================================================
+
+      - name: Atualizar base de aeroportos
+
         run: |
 
           python - <<'PY'
@@ -31,11 +44,12 @@ jobs:
           import urllib.request
           from html import unescape
           from pathlib import Path
+          from datetime import datetime
 
 
-          # ==================================================
-          # CONFIGURACAO
-          # ==================================================
+          # ============================================================
+          # CONFIGURAÇÃO
+          # ============================================================
 
           ARQUIVO = Path("data/aeroportos.json")
 
@@ -44,170 +58,464 @@ jobs:
               "siros/registros/aerodromo/aerodromos.csv"
           )
 
-          MINIMO_REGISTROS = 8000
+          # ------------------------------------------------------------
+          # Aeródromos prioritários
+          # ------------------------------------------------------------
 
-          INTERVALO = 0.30
+          PRIORITARIOS = [
+
+              "SSCL",   # Cassilândia
+              "SBUR",   # Uberaba
+
+          ]
+
+          # ------------------------------------------------------------
+          # Quantidade máxima de consultas AISWEB nesta execução
+          # ------------------------------------------------------------
+
+          LIMITE_AISWEB = 100
+
+          INTERVALO = 0.5
+
+          DATA_ATUALIZACAO = datetime.utcnow().strftime(
+              "%Y-%m-%d"
+          )
 
 
           print("========================================")
           print("LEOSPOTTER")
-          print("ATUALIZACAO ANAC + AISWEB")
+          print("ATUALIZAÇÃO DA BASE DE AERÓDROMOS")
           print("========================================")
           print()
 
+          print(
+              "Data:",
+              DATA_ATUALIZACAO
+          )
 
-          # ==================================================
-          # FUNCOES AUXILIARES
-          # ==================================================
+          print(
+              "Limite AISWEB:",
+              LIMITE_AISWEB
+          )
 
-          def normalizar(valor):
-
-              if valor is None:
-                  return ""
-
-              return str(valor).replace(
-                  "\ufeff",
-                  ""
-              ).strip()
+          print()
 
 
-          def chave_coluna(valor):
+          # ============================================================
+          # FUNÇÃO DOWNLOAD
+          # ============================================================
 
-              valor = normalizar(
-                  valor
-              ).upper()
+          def baixar(url):
 
-              substituicoes = {
-                  "Á": "A",
-                  "À": "A",
-                  "Ã": "A",
-                  "Â": "A",
-                  "É": "E",
-                  "Ê": "E",
-                  "Í": "I",
-                  "Ó": "O",
-                  "Ô": "O",
-                  "Õ": "O",
-                  "Ú": "U",
-                  "Ç": "C"
-              }
+              requisicao = urllib.request.Request(
 
-              for antigo, novo in substituicoes.items():
+                  url,
 
-                  valor = valor.replace(
-                      antigo,
-                      novo
-                  )
+                  headers={
+                      "User-Agent":
+                      "Mozilla/5.0 "
+                      "(Windows NT 10.0; Win64; x64) "
+                      "AppleWebKit/537.36 "
+                      "(KHTML, like Gecko) "
+                      "Chrome/120 Safari/537.36"
+                  }
 
-              return re.sub(
-                  r"[^A-Z0-9]+",
-                  "_",
-                  valor
-              ).strip("_")
+              )
+
+              with urllib.request.urlopen(
+                  requisicao,
+                  timeout=60
+              ) as resposta:
+
+                  conteudo = resposta.read()
+
+                  status = resposta.status
+
+              return status, conteudo
 
 
-          def obter_campo(
+          # ============================================================
+          # LER BASE EXISTENTE
+          # ============================================================
+
+          print("========================================")
+          print("BASE EXISTENTE")
+          print("========================================")
+          print()
+
+          if not ARQUIVO.exists():
+
+              raise Exception(
+                  "Arquivo data/aeroportos.json não encontrado."
+              )
+
+
+          tamanho = ARQUIVO.stat().st_size
+
+          print(
+              "Tamanho:",
+              tamanho,
+              "bytes"
+          )
+
+
+          if tamanho < 1000:
+
+              raise Exception(
+                  "ERRO CRÍTICO: aeroportos.json parece vazio."
+              )
+
+
+          try:
+
+              with open(
+                  ARQUIVO,
+                  "r",
+                  encoding="utf-8"
+              ) as arquivo:
+
+                  aeroportos = json.load(arquivo)
+
+          except Exception as erro:
+
+              raise Exception(
+                  "ERRO CRÍTICO ao ler aeroportos.json: "
+                  + str(erro)
+              )
+
+
+          if not isinstance(
+              aeroportos,
+              list
+          ):
+
+              raise Exception(
+                  "ERRO CRÍTICO: aeroportos.json não contém uma lista."
+              )
+
+
+          print(
+              "Registros existentes:",
+              len(aeroportos)
+          )
+
+          print()
+
+
+          # ============================================================
+          # ÍNDICE DA BASE EXISTENTE
+          # ============================================================
+
+          indice = {}
+
+
+          for aeroporto in aeroportos:
+
+              icao = aeroporto.get("icao")
+
+              if not icao:
+                  continue
+
+              icao = str(
+                  icao
+              ).strip().upper()
+
+              aeroporto["icao"] = icao
+
+              indice[icao] = aeroporto
+
+
+          print(
+              "ICAOs indexados:",
+              len(indice)
+          )
+
+          print()
+
+
+          # ============================================================
+          # BAIXAR SIROS
+          # ============================================================
+
+          print("========================================")
+          print("ANAC / SIROS")
+          print("========================================")
+          print()
+
+          print(
+              "Baixando:",
+              URL_SIROS
+          )
+
+          status, conteudo = baixar(
+              URL_SIROS
+          )
+
+          print(
+              "HTTP:",
+              status
+          )
+
+          print(
+              "Bytes:",
+              len(conteudo)
+          )
+
+          print()
+
+
+          # ============================================================
+          # INTERPRETAR CSV
+          # ============================================================
+
+          texto_csv = conteudo.decode(
+              "utf-8-sig",
+              errors="replace"
+          )
+
+          leitor = csv.DictReader(
+              io.StringIO(texto_csv),
+              delimiter=";"
+          )
+
+          registros_siros = list(
+              leitor
+          )
+
+
+          print(
+              "Registros SIROS:",
+              len(registros_siros)
+          )
+
+          print()
+
+
+          # ============================================================
+          # LOCALIZAR COLUNAS
+          # ============================================================
+
+          def coluna(
               registro,
-              mapa,
-              *nomes
+              nomes
           ):
 
               for nome in nomes:
 
-                  chave = chave_coluna(
-                      nome
-                  )
-
-                  coluna = mapa.get(
-                      chave
-                  )
-
-                  if coluna is not None:
-
-                      valor = normalizar(
-                          registro.get(
-                              coluna,
-                              ""
-                          )
-                      )
-
-                      if valor:
-                          return valor
+                  if nome in registro:
+                      return registro.get(nome)
 
               return ""
 
 
-          def limpar_html(conteudo):
+          # ============================================================
+          # ATUALIZAR CADASTRO ANAC
+          # ============================================================
 
-              texto = conteudo.decode(
-                  "utf-8",
-                  errors="replace"
+          novos = 0
+          atualizados_anac = 0
+          sem_icao = 0
+
+
+          for registro in registros_siros:
+
+              icao = coluna(
+                  registro,
+                  [
+                      "SIGLA ICAO AERÓDROMO",
+                      "ICAO",
+                      "ICAO AERÓDROMO"
+                  ]
               )
 
-              texto = unescape(
-                  texto
-              )
 
-              texto = re.sub(
-                  r"<script.*?</script>",
-                  " ",
-                  texto,
-                  flags=re.I | re.S
-              )
+              if not icao:
 
-              texto = re.sub(
-                  r"<style.*?</style>",
-                  " ",
-                  texto,
-                  flags=re.I | re.S
-              )
+                  sem_icao += 1
 
-              texto = re.sub(
-                  r"<br\s*/?>",
-                  "\n",
-                  texto,
-                  flags=re.I
-              )
-
-              texto = re.sub(
-                  r"</p>|</div>|</tr>|</li>|</h[1-6]>",
-                  "\n",
-                  texto,
-                  flags=re.I
-              )
-
-              texto = re.sub(
-                  r"<[^>]+>",
-                  " ",
-                  texto
-              )
-
-              texto = re.sub(
-                  r"[ \t]+",
-                  " ",
-                  texto
-              )
-
-              texto = re.sub(
-                  r"\n\s*\n+",
-                  "\n",
-                  texto
-              )
-
-              return texto.strip()
+                  continue
 
 
-          # ==================================================
-          # CONSULTA AISWEB
-          # ==================================================
+              icao = str(
+                  icao
+              ).strip().upper()
 
-          def consultar_aisweb(icao):
+
+              # --------------------------------------------------------
+              # Alguns registros podem possuir valores inválidos
+              # --------------------------------------------------------
+
+              if not re.fullmatch(
+                  r"[A-Z0-9]{4}",
+                  icao
+              ):
+
+                  sem_icao += 1
+
+                  continue
+
+
+              nome = coluna(
+                  registro,
+                  [
+                      "NOME AERÓDROMO"
+                  ]
+              ).strip()
+
+
+              iata = coluna(
+                  registro,
+                  [
+                      "SIGLA IATA AERÓDROMO"
+                  ]
+              ).strip()
+
+
+              municipio = coluna(
+                  registro,
+                  [
+                      "MUNICÍPIO AERÓDROMO"
+                  ]
+              ).strip()
+
+
+              uf = coluna(
+                  registro,
+                  [
+                      "ESTADO AERÓDROMO"
+                  ]
+              ).strip()
+
+
+              pais = coluna(
+                  registro,
+                  [
+                      "PAÍS AERÓDROMO"
+                  ]
+              ).strip()
+
+
+              latitude = coluna(
+                  registro,
+                  [
+                      "LATITUDE"
+                  ]
+              ).strip()
+
+
+              longitude = coluna(
+                  registro,
+                  [
+                      "LONGITUDE"
+                  ]
+              ).strip()
+
+
+              if icao in indice:
+
+                  aeroporto = indice[
+                      icao
+                  ]
+
+                  if nome:
+                      aeroporto["nome"] = nome
+
+                  if iata:
+                      aeroporto["iata"] = iata
+
+                  if municipio:
+                      aeroporto["municipio"] = municipio
+
+                  if uf:
+                      aeroporto["uf"] = uf
+
+                  if pais:
+                      aeroporto["pais"] = pais
+
+                  if latitude:
+                      aeroporto["latitude"] = latitude
+
+                  if longitude:
+                      aeroporto["longitude"] = longitude
+
+                  atualizados_anac += 1
+
+
+              else:
+
+                  aeroporto = {
+
+                      "icao": icao,
+
+                      "iata": iata,
+
+                      "nome": nome,
+
+                      "municipio": municipio,
+
+                      "uf": uf,
+
+                      "pais": pais,
+
+                      "latitude": latitude,
+
+                      "longitude": longitude,
+
+                      "pistas": [],
+
+                      "frequencias": [],
+
+                      "distancias_declaradas": [],
+
+                      "ultima_atualizacao_aisweb": None
+
+                  }
+
+
+                  aeroportos.append(
+                      aeroporto
+                  )
+
+                  indice[
+                      icao
+                  ] = aeroporto
+
+                  novos += 1
+
+
+          print(
+              "Novos aeródromos:",
+              novos
+          )
+
+          print(
+              "Registros ANAC atualizados:",
+              atualizados_anac
+          )
+
+          print(
+              "Sem ICAO:",
+              sem_icao
+          )
+
+          print()
+
+
+          # ============================================================
+          # FUNÇÃO AISWEB
+          # ============================================================
+
+          def consultar_aisweb(
+              icao
+          ):
 
               url = (
+
                   "https://aisweb.decea.mil.br/"
                   "?codigo="
                   + icao
                   + "&i=aerodromos"
+
               )
 
 
@@ -234,27 +542,76 @@ jobs:
 
                   conteudo = resposta.read()
 
-                  status = resposta.status
 
-
-              if status != 200:
-
-                  raise Exception(
-                      "HTTP "
-                      + str(status)
-                  )
-
-
-              if len(conteudo) < 1000:
-
-                  raise Exception(
-                      "Resposta AISWEB muito pequena"
-                  )
-
-
-              texto = limpar_html(
-                  conteudo
+              texto = conteudo.decode(
+                  "utf-8",
+                  errors="replace"
               )
+
+
+              texto = unescape(
+                  texto
+              )
+
+
+              # --------------------------------------------------------
+              # LIMPEZA HTML
+              # --------------------------------------------------------
+
+              texto = re.sub(
+                  r"<script.*?</script>",
+                  " ",
+                  texto,
+                  flags=re.I | re.S
+              )
+
+
+              texto = re.sub(
+                  r"<style.*?</style>",
+                  " ",
+                  texto,
+                  flags=re.I | re.S
+              )
+
+
+              texto = re.sub(
+                  r"<br\s*/?>",
+                  "\n",
+                  texto,
+                  flags=re.I
+              )
+
+
+              texto = re.sub(
+                  r"</p>|</div>|</tr>|</li>|</h[1-6]>",
+                  "\n",
+                  texto,
+                  flags=re.I
+              )
+
+
+              texto = re.sub(
+                  r"<[^>]+>",
+                  " ",
+                  texto
+              )
+
+
+              texto = re.sub(
+                  r"[ \t]+",
+                  " ",
+                  texto
+              )
+
+
+              texto = re.sub(
+                  r"\n\s*\n+",
+                  "\n",
+                  texto
+              )
+
+
+              texto = texto.strip()
 
               texto_upper = texto.upper()
 
@@ -272,11 +629,11 @@ jobs:
               }
 
 
-              # ==================================================
+              # ========================================================
               # PISTAS
-              # ==================================================
+              # ========================================================
 
-              pistas = re.findall(
+              padrao_pista = re.search(
 
                   r"(\d{2})\s*-\s*.*?"
                   r"\(\s*"
@@ -294,44 +651,39 @@ jobs:
               )
 
 
-              for pista in pistas:
+              if padrao_pista:
 
-                  item = {
+                  resultado[
+                      "pistas"
+                  ].append({
 
                       "identificacao":
-                      pista[0]
-                      + "/"
-                      + pista[5],
+
+                          padrao_pista.group(1)
+                          + "/"
+                          + padrao_pista.group(6),
 
                       "piso":
-                      pista[3],
+
+                          padrao_pista.group(4),
 
                       "dimensoes":
-                      pista[1]
-                      + " x "
-                      + pista[2]
-                      + " m",
+
+                          padrao_pista.group(2)
+                          + " x "
+                          + padrao_pista.group(3)
+                          + " m",
 
                       "resistencia":
-                      pista[4]
 
-                  }
+                          padrao_pista.group(5)
 
-
-                  if item not in resultado[
-                      "pistas"
-                  ]:
-
-                      resultado[
-                          "pistas"
-                      ].append(
-                          item
-                      )
+                  })
 
 
-              # ==================================================
-              # FREQUENCIAS
-              # ==================================================
+              # ========================================================
+              # FREQUÊNCIAS
+              # ========================================================
 
               frequencias = re.findall(
 
@@ -349,62 +701,113 @@ jobs:
 
               for servico, frequencia in frequencias:
 
-                  item = {
-
-                      "orgao":
-                      servico.strip(),
-
-                      "valor":
-                      frequencia,
-
-                      "observacao":
-                      ""
-
-                  }
+                  servico = servico.strip()
 
 
-                  if item not in resultado[
-                      "frequencias"
-                  ]:
+                  existe = any(
+
+                      f.get("orgao") == servico
+                      and
+                      f.get("valor") == frequencia
+
+                      for f in resultado[
+                          "frequencias"
+                      ]
+
+                  )
+
+
+                  if not existe:
 
                       resultado[
                           "frequencias"
-                      ].append(
-                          item
+                      ].append({
+
+                          "orgao": servico,
+
+                          "valor": frequencia,
+
+                          "observacao": ""
+
+                      })
+
+
+              # ========================================================
+              # DISTÂNCIAS DECLARADAS
+              # ========================================================
+
+              padroes = [
+
+                  r"(\d{2})\s+"
+                  r"(\d{3,5})\s+"
+                  r"(\d{3,5})\s+"
+                  r"(\d{3,5})\s+"
+                  r"(\d{3,5})",
+
+                  r"(\d{2})\s*"
+                  r"(\d{3,5})\s*"
+                  r"(\d{3,5})\s*"
+                  r"(\d{3,5})\s*"
+                  r"(\d{3,5})"
+
+              ]
+
+
+              encontrados = []
+
+
+              for padrao in padroes:
+
+                  encontrados.extend(
+
+                      re.findall(
+                          padrao,
+                          texto
                       )
 
+                  )
 
-              # ==================================================
-              # DISTANCIAS DECLARADAS
-              # ==================================================
 
-              distancias = re.findall(
-
-                  r"\b(\d{2})\s+"
-                  r"(\d{3,5})\s+"
-                  r"(\d{3,5})\s+"
-                  r"(\d{3,5})\s+"
-                  r"(\d{3,5})\b",
-
-                  texto
-
-              )
+              vistos = set()
 
 
               for (
 
-                  rwy,
+                  cabeceira,
                   tora,
                   toda,
                   asda,
                   lda
 
-              ) in distancias:
+              ) in encontrados:
 
-                  item = {
+
+                  chave = (
+
+                      cabeceira,
+                      tora,
+                      toda,
+                      asda,
+                      lda
+
+                  )
+
+
+                  if chave in vistos:
+                      continue
+
+
+                  vistos.add(
+                      chave
+                  )
+
+
+                  resultado[
+                      "distancias_declaradas"
+                  ].append({
 
                       "rwy":
-                      rwy,
+                      cabeceira,
 
                       "tora":
                       int(tora),
@@ -418,27 +821,16 @@ jobs:
                       "lda":
                       int(lda)
 
-                  }
+                  })
 
 
-                  if item not in resultado[
-                      "distancias_declaradas"
-                  ]:
+              # ========================================================
+              # DATA AISWEB
+              # ========================================================
 
-                      resultado[
-                          "distancias_declaradas"
-                      ].append(
-                          item
-                      )
+              padrao_data = re.search(
 
-
-              # ==================================================
-              # DATA DE ATUALIZACAO
-              # ==================================================
-
-              data = re.search(
-
-                  r"ÚLTIMA ATUALIZAÇÃO\s*:\s*"
+                  r"ÚLTIMA ATUALIZAÇÃO:\s*"
                   r"(\d{2}/\d{2}/\d{4})",
 
                   texto_upper
@@ -446,501 +838,123 @@ jobs:
               )
 
 
-              if data:
+              if padrao_data:
 
                   resultado[
                       "atualizacao"
-                  ] = data.group(1)
+                  ] = padrao_data.group(1)
+
+
+              # ========================================================
+              # VALIDAÇÃO
+              # ========================================================
+
+              if not resultado[
+                  "pistas"
+              ]:
+
+                  raise Exception(
+                      "Nenhuma pista encontrada"
+                  )
+
+
+              if not resultado[
+                  "frequencias"
+              ]:
+
+                  raise Exception(
+                      "Nenhuma frequência encontrada"
+                  )
 
 
               return resultado
 
 
-          # ==================================================
-          # BAIXAR BASE SIROS
-          # ==================================================
+          # ============================================================
+          # DEFINIR QUEM SERÁ CONSULTADO
+          # ============================================================
 
-          print("========================================")
-          print("BAIXANDO BASE ANAC / SIROS")
-          print("========================================")
-          print()
+          candidatos_prioritarios = []
 
-          print(
-              "URL:",
-              URL_SIROS
-          )
+          candidatos_normais = []
 
-          print()
 
+          for icao, aeroporto in indice.items():
 
-          requisicao = urllib.request.Request(
+              if icao in PRIORITARIOS:
 
-              URL_SIROS,
-
-              headers={
-                  "User-Agent":
-                  "Mozilla/5.0 "
-                  "(Windows NT 10.0; Win64; x64) "
-                  "AppleWebKit/537.36 "
-                  "(KHTML, like Gecko) "
-                  "Chrome/120 Safari/537.36"
-              }
-
-          )
-
-
-          with urllib.request.urlopen(
-              requisicao,
-              timeout=120
-          ) as resposta:
-
-              dados_csv = resposta.read()
-
-              status = resposta.status
-
-
-          print(
-              "HTTP:",
-              status
-          )
-
-          print(
-              "Bytes:",
-              len(dados_csv)
-          )
-
-          print()
-
-
-          if status != 200:
-
-              raise Exception(
-                  "ANAC retornou HTTP "
-                  + str(status)
-              )
-
-
-          if len(dados_csv) < 100000:
-
-              raise Exception(
-                  "Arquivo ANAC inesperadamente pequeno."
-              )
-
-
-          texto_csv = dados_csv.decode(
-              "utf-8-sig"
-          )
-
-
-          primeira_linha = (
-              texto_csv
-              .splitlines()[0]
-          )
-
-
-          if ";" in primeira_linha:
-
-              separador = ";"
-
-          elif "," in primeira_linha:
-
-              separador = ","
-
-          else:
-
-              raise Exception(
-                  "Separador CSV nao identificado."
-              )
-
-
-          leitor = csv.DictReader(
-
-              io.StringIO(
-                  texto_csv
-              ),
-
-              delimiter=separador
-
-          )
-
-
-          colunas = (
-              leitor.fieldnames
-              or []
-          )
-
-
-          registros = list(
-              leitor
-          )
-
-
-          print(
-              "Separador:",
-              repr(separador)
-          )
-
-          print(
-              "Registros brutos:",
-              len(registros)
-          )
-
-          print()
-
-
-          if len(registros) < MINIMO_REGISTROS:
-
-              raise Exception(
-
-                  "ERRO CRITICO: base ANAC possui "
-                  + str(len(registros))
-                  + " registros. "
-                  + "Minimo esperado: "
-                  + str(MINIMO_REGISTROS)
-
-              )
-
-
-          mapa_colunas = {
-
-              chave_coluna(coluna):
-              coluna
-
-              for coluna in colunas
-
-          }
-
-
-          # ==================================================
-          # LER BASE ANTERIOR
-          # ==================================================
-
-          base_anterior = {}
-
-
-          if ARQUIVO.exists():
-
-              try:
-
-                  with open(
-                      ARQUIVO,
-                      "r",
-                      encoding="utf-8"
-                  ) as arquivo:
-
-                      dados_antigos = json.load(
-                          arquivo
-                      )
-
-
-                  if isinstance(
-                      dados_antigos,
-                      list
-                  ):
-
-                      for item in dados_antigos:
-
-                          if not isinstance(
-                              item,
-                              dict
-                          ):
-
-                              continue
-
-
-                          icao = normalizar(
-
-                              item.get(
-                                  "icao",
-                                  ""
-                              )
-
-                          ).upper()
-
-
-                          if re.fullmatch(
-                              r"[A-Z]{4}",
-                              icao
-                          ):
-
-                              base_anterior[
-                                  icao
-                              ] = item
-
-
-              except Exception as erro:
-
-                  print(
-                      "Aviso: nao foi possivel "
-                      "ler a base anterior:"
+                  candidatos_prioritarios.append(
+                      aeroporto
                   )
 
-                  print(
-                      erro
+              else:
+
+                  candidatos_normais.append(
+                      aeroporto
                   )
 
 
+          # ------------------------------------------------------------
+          # Prioritários sempre entram primeiro
+          # ------------------------------------------------------------
+
+          candidatos = (
+
+              candidatos_prioritarios
+              +
+              candidatos_normais
+
+          )
+
+
+          candidatos = candidatos[
+              :LIMITE_AISWEB
+          ]
+
+
+          print("========================================")
+          print("ATUALIZAÇÃO AISWEB")
+          print("========================================")
+          print()
+
           print(
-              "Registros anteriores:",
-              len(base_anterior)
+              "Prioritários:",
+              ", ".join(PRIORITARIOS)
+          )
+
+          print(
+              "Consultas nesta execução:",
+              len(candidatos)
           )
 
           print()
 
 
-          # ==================================================
-          # CONSTRUIR BASE ANAC
-          # ==================================================
-
-          nova_base = []
-
-          vistos = set()
-
-          sem_icao = 0
-
-          duplicados = 0
-
-
-          for registro in registros:
-
-              icao = obter_campo(
-
-                  registro,
-                  mapa_colunas,
-
-                  "SIGLA ICAO AERÓDROMO",
-                  "SIGLA ICAO",
-                  "ICAO",
-                  "OACI"
-
-              ).upper()
-
-
-              if not re.fullmatch(
-                  r"[A-Z]{4}",
-                  icao
-              ):
-
-                  sem_icao += 1
-
-                  continue
-
-
-              if icao in vistos:
-
-                  duplicados += 1
-
-                  continue
-
-
-              vistos.add(
-                  icao
-              )
-
-
-              anterior = base_anterior.get(
-                  icao,
-                  {}
-              )
-
-
-              aeroporto = {
-
-                  "icao":
-                  icao,
-
-                  "iata":
-                  obter_campo(
-
-                      registro,
-                      mapa_colunas,
-
-                      "SIGLA IATA AERÓDROMO",
-                      "SIGLA IATA",
-                      "IATA"
-
-                  ),
-
-                  "nome":
-                  obter_campo(
-
-                      registro,
-                      mapa_colunas,
-
-                      "NOME AERÓDROMO",
-                      "NOME"
-
-                  ),
-
-                  "municipio":
-                  obter_campo(
-
-                      registro,
-                      mapa_colunas,
-
-                      "MUNICÍPIO AERÓDROMO",
-                      "MUNICIPIO AERODROMO",
-                      "MUNICÍPIO",
-                      "MUNICIPIO"
-
-                  ),
-
-                  "uf":
-                  obter_campo(
-
-                      registro,
-                      mapa_colunas,
-
-                      "ESTADO AERÓDROMO",
-                      "ESTADO",
-                      "UF"
-
-                  ),
-
-                  "pais":
-                  obter_campo(
-
-                      registro,
-                      mapa_colunas,
-
-                      "PAÍS AERÓDROMO",
-                      "PAIS AERODROMO",
-                      "PAÍS",
-                      "PAIS"
-
-                  ),
-
-                  "aeronave_critica":
-                  obter_campo(
-
-                      registro,
-                      mapa_colunas,
-
-                      "AERONAVE CRÍTICA",
-                      "AERONAVE CRITICA"
-
-                  ),
-
-                  "latitude":
-                  obter_campo(
-
-                      registro,
-                      mapa_colunas,
-
-                      "LATITUDE"
-
-                  ),
-
-                  "longitude":
-                  obter_campo(
-
-                      registro,
-                      mapa_colunas,
-
-                      "LONGITUDE"
-
-                  ),
-
-                  "pistas":
-                  anterior.get(
-                      "pistas",
-                      []
-                  ),
-
-                  "frequencias":
-                  anterior.get(
-                      "frequencias",
-                      []
-                  ),
-
-                  "distancias_declaradas":
-                  anterior.get(
-                      "distancias_declaradas",
-                      []
-                  )
-
-              }
-
-
-              nova_base.append(
-                  aeroporto
-              )
-
-
-          print("========================================")
-          print("BASE ANAC")
-          print("========================================")
-          print()
-
-          print(
-              "Registros brutos:",
-              len(registros)
-          )
-
-          print(
-              "ICAOs validos:",
-              len(nova_base)
-          )
-
-          print(
-              "Duplicados:",
-              duplicados
-          )
-
-          print(
-              "Sem ICAO:",
-              sem_icao
-          )
-
-          print()
-
-
-          if len(nova_base) < MINIMO_REGISTROS:
-
-              raise Exception(
-
-                  "ERRO CRITICO: somente "
-                  + str(len(nova_base))
-                  + " aerodromos validos."
-
-              )
-
-
-          # ==================================================
-          # CONSULTAR AISWEB
-          # ==================================================
-
-          print("========================================")
-          print("CONSULTANDO AISWEB")
-          print("========================================")
-          print()
-
-
-          total = len(
-              nova_base
-          )
-
-          consultados = 0
-
-          atualizados = 0
-
-          falhas = 0
-
-          sem_pista = 0
-
-          sem_frequencia = 0
+          # ============================================================
+          # PROCESSAR AISWEB
+          # ============================================================
+
+          sucesso = 0
+          erros = 0
+          pistas_total = 0
+          frequencias_total = 0
+          distancias_total = 0
 
 
           for numero, aeroporto in enumerate(
-
-              nova_base,
+              candidatos,
               start=1
-
           ):
 
               icao = aeroporto[
                   "icao"
               ]
+
+
+              print(
+                  f"[{numero}/{len(candidatos)}] "
+                  f"AISWEB {icao}..."
+              )
 
 
               try:
@@ -950,97 +964,118 @@ jobs:
                   )
 
 
-                  consultados += 1
+                  # ----------------------------------------------------
+                  # Atualizar somente se a consulta for válida
+                  # ----------------------------------------------------
 
-
-                  if dados[
+                  aeroporto[
                       "pistas"
-                  ]:
-
-                      aeroporto[
-                          "pistas"
-                      ] = dados[
-                          "pistas"
-                      ]
-
-                  else:
-
-                      sem_pista += 1
+                  ] = dados[
+                      "pistas"
+                  ]
 
 
-                  if dados[
+                  aeroporto[
                       "frequencias"
-                  ]:
-
-                      aeroporto[
-                          "frequencias"
-                      ] = dados[
-                          "frequencias"
-                      ]
-
-                  else:
-
-                      sem_frequencia += 1
+                  ] = dados[
+                      "frequencias"
+                  ]
 
 
-                  if dados[
+                  aeroporto[
                       "distancias_declaradas"
-                  ]:
-
-                      aeroporto[
-                          "distancias_declaradas"
-                      ] = dados[
-                          "distancias_declaradas"
-                      ]
+                  ] = dados[
+                      "distancias_declaradas"
+                  ]
 
 
-                  if dados[
-                      "atualizacao"
-                  ]:
+                  aeroporto[
+                      "ultima_atualizacao_aisweb"
+                  ] = (
 
-                      aeroporto[
-                          "atualizacao_aisweb"
-                      ] = dados[
+                      dados[
                           "atualizacao"
                       ]
 
-
-                  if (
-
-                      dados["pistas"]
                       or
-                      dados["frequencias"]
 
-                  ):
+                      DATA_ATUALIZACAO
 
-                      atualizados += 1
+                  )
+
+
+                  sucesso += 1
+
+
+                  pistas_total += len(
+                      dados[
+                          "pistas"
+                      ]
+                  )
+
+
+                  frequencias_total += len(
+                      dados[
+                          "frequencias"
+                      ]
+                  )
+
+
+                  distancias_total += len(
+                      dados[
+                          "distancias_declaradas"
+                      ]
+                  )
 
 
                   print(
+                      "  ✓ atualizado"
+                  )
 
-                      f"[{numero}/{total}] "
-                      f"{icao} "
-                      f"OK | "
-                      f"pistas={len(dados['pistas'])} "
-                      f"freq={len(dados['frequencias'])} "
-                      f"dist={len(dados['distancias_declaradas'])}"
 
+                  print(
+                      "    Pistas:",
+                      len(
+                          dados[
+                              "pistas"
+                          ]
+                      )
+                  )
+
+
+                  print(
+                      "    Frequências:",
+                      len(
+                          dados[
+                              "frequencias"
+                          ]
+                      )
+                  )
+
+
+                  print(
+                      "    Distâncias:",
+                      len(
+                          dados[
+                              "distancias_declaradas"
+                          ]
+                      )
                   )
 
 
               except Exception as erro:
 
-                  falhas += 1
+                  erros += 1
 
 
                   print(
+                      "  ! erro:",
+                      erro
+                  )
 
-                      f"[{numero}/{total}] "
-                      f"{icao} "
-                      f"ERRO | "
-                      f"{erro} | "
-                      f"dados anteriores mantidos"
 
+                  print(
+                      "    Dados anteriores preservados."
                   )
 
 
@@ -1049,108 +1084,45 @@ jobs:
               )
 
 
-          # ==================================================
-          # VALIDAR SBUR
-          # ==================================================
+          # ============================================================
+          # ORDENAR BASE
+          # ============================================================
 
-          sbur = None
+          aeroportos.sort(
 
-
-          for aeroporto in nova_base:
-
-              if aeroporto[
-                  "icao"
-              ] == "SBUR":
-
-                  sbur = aeroporto
-
-                  break
-
-
-          if sbur is None:
-
-              raise Exception(
-                  "SBUR nao encontrado na base."
-              )
-
-
-          print()
-          print("========================================")
-          print("VALIDACAO SBUR")
-          print("========================================")
-          print()
-
-
-          print(
-              json.dumps(
-                  sbur,
-                  ensure_ascii=False,
-                  indent=2
-              )
-          )
-
-
-          # ==================================================
-          # VALIDAR SSCL
-          # ==================================================
-
-          sscl = None
-
-
-          for aeroporto in nova_base:
-
-              if aeroporto[
-                  "icao"
-              ] == "SSCL":
-
-                  sscl = aeroporto
-
-                  break
-
-
-          print()
-          print("========================================")
-          print("VALIDACAO SSCL - CASSILANDIA")
-          print("========================================")
-          print()
-
-
-          if sscl is None:
-
-              print(
-                  "AVISO: SSCL nao encontrado "
-                  "na base ANAC/SIROS."
-              )
-
-          else:
-
-              print(
-                  json.dumps(
-                      sscl,
-                      ensure_ascii=False,
-                      indent=2
+              key=lambda x:
+              str(
+                  x.get(
+                      "icao",
+                      ""
                   )
               )
 
+          )
 
-          # ==================================================
+
+          # ============================================================
           # SALVAR
-          # ==================================================
+          # ============================================================
 
           with open(
 
               ARQUIVO,
+
               "w",
+
               encoding="utf-8"
 
           ) as arquivo:
 
               json.dump(
 
-                  nova_base,
+                  aeroportos,
+
                   arquivo,
 
                   ensure_ascii=False,
+
                   indent=2
 
               )
@@ -1160,126 +1132,151 @@ jobs:
               )
 
 
-          # ==================================================
-          # VALIDAR JSON FINAL
-          # ==================================================
+          # ============================================================
+          # RESUMO
+          # ============================================================
 
-          with open(
+          print()
 
-              ARQUIVO,
-              "r",
-              encoding="utf-8"
+          print("========================================")
+          print("RESUMO")
+          print("========================================")
 
-          ) as arquivo:
+          print(
+              "Total de aeródromos:",
+              len(aeroportos)
+          )
 
-              teste = json.load(
-                  arquivo
-              )
+          print(
+              "Consultas AISWEB:",
+              len(candidatos)
+          )
 
+          print(
+              "AISWEB com sucesso:",
+              sucesso
+          )
 
-          if not isinstance(
-              teste,
-              list
-          ):
+          print(
+              "AISWEB com erro:",
+              erros
+          )
+
+          print(
+              "Novos registros ANAC:",
+              novos
+          )
+
+          print(
+              "Pistas obtidas:",
+              pistas_total
+          )
+
+          print(
+              "Frequências obtidas:",
+              frequencias_total
+          )
+
+          print(
+              "Distâncias obtidas:",
+              distancias_total
+          )
+
+          print()
+
+          # ============================================================
+          # VALIDAÇÕES CRÍTICAS
+          # ============================================================
+
+          if len(aeroportos) < 7000:
 
               raise Exception(
-                  "JSON final invalido."
-              )
 
-
-          if len(teste) < MINIMO_REGISTROS:
-
-              raise Exception(
-
-                  "ERRO CRITICO: "
-                  "JSON final possui somente "
-                  + str(len(teste))
+                  "ERRO CRÍTICO: base possui apenas "
+                  + str(len(aeroportos))
                   + " registros."
 
               )
 
 
-          # ==================================================
-          # RESUMO
-          # ==================================================
+          if "SSCL" not in indice:
 
-          print()
-          print("========================================")
-          print("RESUMO")
-          print("========================================")
-          print()
+              raise Exception(
+                  "ERRO CRÍTICO: SSCL não encontrado."
+              )
+
+
+          if "SBUR" not in indice:
+
+              raise Exception(
+                  "ERRO CRÍTICO: SBUR não encontrado."
+              )
+
 
           print(
-              "Aerodromos:",
-              total
+              "✓ SSCL presente"
           )
 
           print(
-              "Consultados AISWEB:",
-              consultados
-          )
-
-          print(
-              "Atualizados:",
-              atualizados
-          )
-
-          print(
-              "Falhas AISWEB:",
-              falhas
-          )
-
-          print(
-              "Sem pista:",
-              sem_pista
-          )
-
-          print(
-              "Sem frequencia:",
-              sem_frequencia
+              "✓ SBUR presente"
           )
 
           print()
 
           print(
-              "Arquivo:",
-              ARQUIVO
+              "========================================"
           )
 
-          print()
-          print("========================================")
-          print("ATUALIZACAO CONCLUIDA")
-          print("========================================")
+          print(
+              "✓ ATUALIZAÇÃO CONCLUÍDA"
+          )
+
+          print(
+              "========================================"
+
 
           PY
 
 
-      - name: Verificar alteracoes
+      # ============================================================
+      # VERIFICAR ALTERAÇÕES
+      # ============================================================
+
+      - name: Verificar alterações
+
         id: verificar
+
         run: |
 
           if git diff --quiet -- data/aeroportos.json; then
 
             echo "alterado=false" >> "$GITHUB_OUTPUT"
 
-            echo "Nenhuma alteracao na base."
+            echo "Nenhuma alteração."
 
           else
 
             echo "alterado=true" >> "$GITHUB_OUTPUT"
 
-            echo "A base foi alterada."
+            echo "Base alterada."
 
             git diff --stat -- data/aeroportos.json
 
           fi
 
 
+      # ============================================================
+      # COMMIT
+      # ============================================================
+
       - name: Commit e push
+
         if: steps.verificar.outputs.alterado == 'true'
+
         run: |
 
-          git config user.name "github-actions[bot]"
+          git config user.name \
+            "github-actions[bot]"
 
           git config user.email \
             "41898282+github-actions[bot]@users.noreply.github.com"
@@ -1287,15 +1284,23 @@ jobs:
           git add data/aeroportos.json
 
           git commit \
-            -m "Atualizar dados ANAC e AISWEB"
+            -m "Atualizar base de aeroportos"
 
           git push
 
 
-      - name: Finalizacao
+      # ============================================================
+      # FINALIZAÇÃO
+      # ============================================================
+
+      - name: Finalização
+
         run: |
 
           echo "========================================"
+
           echo "LEOSPOTTER"
-          echo "ATUALIZACAO CONCLUIDA"
+
+          echo "ATUALIZAÇÃO FINALIZADA"
+
           echo "========================================"
