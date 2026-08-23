@@ -1,6 +1,3 @@
-# atualizar-aeroportos.yml
-
-```yaml
 name: Atualizar aeroportos
 
 on:
@@ -13,45 +10,107 @@ permissions:
   contents: write
 
 jobs:
+
   atualizar:
+
+    name: Atualizar base de aeroportos
+
     runs-on: ubuntu-latest
 
     steps:
 
+      # ==========================================
+      # BAIXAR REPOSITÓRIO
+      # ==========================================
+
       - name: Baixar repositório
         uses: actions/checkout@v4
 
+
+      # ==========================================
+      # CONFIGURAR PYTHON
+      # ==========================================
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+
+      # ==========================================
+      # ATUALIZAR BASE
+      # ==========================================
+
       - name: Atualizar base de aeroportos
-        run: python scripts/atualizar_aeroportos.py
+        run: |
+          echo "Iniciando atualização da base..."
+          python scripts/atualizar_aeroportos.py
+
+
+      # ==========================================
+      # VERIFICAR ALTERAÇÕES
+      # ==========================================
 
       - name: Verificar alterações
         id: verificar
         run: |
+
+          echo "Verificando alterações..."
+
           if git diff --quiet -- data/aeroportos.json data/aeroportos_cursor.json; then
+
             echo "alterado=false" >> "$GITHUB_OUTPUT"
-            echo "Nenhuma alteração."
+
+            echo "Nenhuma alteração encontrada."
+
           else
+
             echo "alterado=true" >> "$GITHUB_OUTPUT"
+
             echo "Base alterada."
-            git diff --stat -- data/aeroportos.json data/aeroportos_cursor.json
+
+            git diff --stat -- \
+              data/aeroportos.json \
+              data/aeroportos_cursor.json
+
           fi
+
+
+      # ==========================================
+      # COMMIT E PUSH
+      # ==========================================
 
       - name: Commit e push
         if: steps.verificar.outputs.alterado == 'true'
         run: |
+
+          echo "Salvando alterações..."
+
           git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add data/aeroportos.json data/aeroportos_cursor.json
+          git config user.email \
+            "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git commit -m "Atualizar base de aeroportos"
+          git add \
+            data/aeroportos.json \
+            data/aeroportos_cursor.json
+
+          git commit \
+            -m "Atualizar base de aeroportos"
 
           git push
 
+
+      # ==========================================
+      # FINALIZAÇÃO
+      # ==========================================
+
       - name: Finalização
         run: |
+
+          echo ""
           echo "========================================"
           echo "LEOSPOTTER"
-          echo "ATUALIZAÇÃO FINALIZADA"
+          echo "ATUALIZAÇÃO DE AEROPORTOS FINALIZADA"
           echo "========================================"
-```
+          echo ""
