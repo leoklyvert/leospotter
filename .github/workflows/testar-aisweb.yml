@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Inspecionar AISWEB SBUR
+      - name: Inspecionar estrutura da pista SBUR
         run: |
           python - <<'PY'
           import re
@@ -19,9 +19,8 @@ jobs:
 
           print("========================================")
           print("LEOSPOTTER")
-          print("INSPEÇÃO AISWEB")
+          print("ESTRUTURA DA PISTA - AISWEB")
           print("========================================")
-          print()
 
           url = (
               "https://aisweb.decea.mil.br/"
@@ -46,16 +45,12 @@ jobs:
               request,
               timeout=60
           ) as response:
+
               html = response.read()
-              status = response.status
 
-          print("HTTP:", status)
-          print("Bytes:", len(html))
-          print()
-
-          # ==========================================
-          # HTML -> TEXTO
-          # ==========================================
+              print()
+              print("HTTP:", response.status)
+              print("Bytes:", len(html))
 
           texto = html.decode(
               "utf-8",
@@ -118,35 +113,34 @@ jobs:
               if linha.strip()
           ]
 
-          # ==========================================
-          # MOSTRAR INFORMAÇÕES DO SBUR
-          # ==========================================
-
+          print()
           print("========================================")
-          print("INFORMAÇÕES DO AERÓDROMO")
+          print("LINHAS DA REGIÃO DA PISTA")
           print("========================================")
 
-          for i, linha in enumerate(linhas):
+          for inicio, fim in [
+              (135, 170),
+              (145, 165),
+              (150, 160)
+          ]:
 
-              if ICAO in linha.upper():
+              print()
+              print(
+                  f"--- linhas {inicio} até {fim} ---"
+              )
 
-                  inicio = max(0, i - 5)
-                  fim = min(len(linhas), i + 15)
+              for numero in range(
+                  inicio,
+                  min(fim + 1, len(linhas))
+              ):
 
-                  for n in range(inicio, fim):
-                      print(
-                          f"{n:04d}: {linhas[n]}"
-                      )
-
-                  break
-
-          # ==========================================
-          # LOCALIZAR TORA / TODA / ASDA / LDA
-          # ==========================================
+                  print(
+                      f"{numero:04d}: {linhas[numero]}"
+                  )
 
           print()
           print("========================================")
-          print("LOCALIZAÇÃO DAS DISTÂNCIAS DE PISTA")
+          print("BUSCA POR TORA / TODA / ASDA / LDA")
           print("========================================")
 
           palavras = (
@@ -156,223 +150,38 @@ jobs:
               "LDA"
           )
 
-          encontrados = set()
-
-          for i, linha in enumerate(linhas):
-
-              upper = linha.upper()
+          for numero, linha in enumerate(linhas):
 
               if any(
-                  palavra in upper
+                  palavra in linha.upper()
                   for palavra in palavras
               ):
 
-                  inicio = max(0, i - 10)
-                  fim = min(len(linhas), i + 20)
-
-                  bloco = "\n".join(
-                      linhas[inicio:fim]
-                  )
-
-                  if bloco in encontrados:
-                      continue
-
-                  encontrados.add(bloco)
-
-                  print()
                   print(
-                      f"--- região encontrada na linha {i} ---"
+                      f"{numero:04d}: {linha}"
                   )
-
-                  for n in range(inicio, fim):
-                      print(
-                          f"{n:04d}: {linhas[n]}"
-                      )
-
-          # ==========================================
-          # LOCALIZAR RWY
-          # ==========================================
 
           print()
           print("========================================")
-          print("LOCALIZAÇÃO DAS CABECEIRAS")
+          print("BUSCA POR PADRÕES DE CABECEIRA")
           print("========================================")
 
-          for i, linha in enumerate(linhas):
+          for numero, linha in enumerate(linhas):
 
-              upper = linha.upper()
-
-              if (
-                  "RWY" in upper
-                  or "PISTA" in upper
-                  or re.search(
-                      r"\b\d{2}\s*-\s*\d{2}\b",
-                      upper
-                  )
-              ):
-
-                  inicio = max(0, i - 5)
-                  fim = min(len(linhas), i + 20)
-
-                  print()
-
-                  for n in range(inicio, fim):
-                      print(
-                          f"{n:04d}: {linhas[n]}"
-                      )
-
-          # ==========================================
-          # LOCALIZAR FREQUÊNCIAS
-          # ==========================================
-
-          print()
-          print("========================================")
-          print("LOCALIZAÇÃO DAS FREQUÊNCIAS")
-          print("========================================")
-
-          padrao_frequencia = re.compile(
-              r"\b\d{3}\.\d{3}\b"
-          )
-
-          indices = []
-
-          for i, linha in enumerate(linhas):
-
-              if padrao_frequencia.search(
+              encontrados = re.findall(
+                  r"\b\d{2}\s*[-/]\s*\d{2}\b",
                   linha
-              ):
-
-                  indices.append(i)
-
-          if not indices:
-
-              print(
-                  "Nenhuma frequência encontrada."
               )
 
-          else:
+              if encontrados:
 
-              vistos = set()
-
-              for i in indices:
-
-                  inicio = max(0, i - 8)
-                  fim = min(len(linhas), i + 8)
-
-                  bloco = "\n".join(
-                      linhas[inicio:fim]
-                  )
-
-                  if bloco in vistos:
-                      continue
-
-                  vistos.add(bloco)
-
-                  print()
                   print(
-                      f"--- frequência próxima à linha {i} ---"
+                      f"{numero:04d}: {linha}"
                   )
-
-                  for n in range(inicio, fim):
-                      print(
-                          f"{n:04d}: {linhas[n]}"
-                      )
-
-          # ==========================================
-          # TODAS AS FREQUÊNCIAS
-          # ==========================================
 
           print()
           print("========================================")
-          print("FREQUÊNCIAS ENCONTRADAS")
-          print("========================================")
-
-          frequencias = re.findall(
-              r"\b\d{3}\.\d{3}\b",
-              texto
-          )
-
-          unicas = []
-
-          for frequencia in frequencias:
-
-              if frequencia not in unicas:
-                  unicas.append(frequencia)
-
-          if unicas:
-
-              for frequencia in unicas:
-                  print(
-                      "Frequência:",
-                      frequencia
-                  )
-
-          else:
-
-              print(
-                  "Nenhuma frequência encontrada."
-              )
-
-          # ==========================================
-          # DATA AISWEB
-          # ==========================================
-
-          print()
-          print("========================================")
-          print("DATA DA INFORMAÇÃO")
-          print("========================================")
-
-          datas = re.findall(
-              r"ÚLTIMA ATUALIZAÇÃO\s*:?\s*"
-              r"(\d{2}/\d{2}/\d{4})",
-              texto.upper()
-          )
-
-          if datas:
-
-              for data in datas:
-                  print(
-                      "Última atualização:",
-                      data
-                  )
-
-          else:
-
-              print(
-                  "Data não encontrada."
-              )
-
-          # ==========================================
-          # COORDENADAS
-          # ==========================================
-
-          print()
-          print("========================================")
-          print("COORDENADAS")
-          print("========================================")
-
-          coordenadas = re.findall(
-              r"[NS]\s*\d{1,3}\s+\d{1,2}\s+[\d.]+\s+"
-              r"[EW]\s*\d{1,3}\s+\d{1,2}\s+[\d.]+",
-              texto.upper()
-          )
-
-          if coordenadas:
-
-              for coordenada in coordenadas:
-                  print(
-                      coordenada
-                  )
-
-          else:
-
-              print(
-                  "Coordenadas não encontradas."
-              )
-
-          print()
-          print("========================================")
-          print("FIM DA INSPEÇÃO")
+          print("FIM DO TESTE")
           print("========================================")
 
           PY
