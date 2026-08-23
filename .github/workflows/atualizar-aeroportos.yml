@@ -25,10 +25,10 @@ jobs:
 
 
       # ==========================================
-      # ATUALIZAR BASE
+      # RECONSTRUIR BASE ANAC / SIROS
       # ==========================================
 
-      - name: Baixar e processar base ANAC
+      - name: Reconstruir base de aeroportos
         run: |
 
           python - <<'PY'
@@ -60,9 +60,9 @@ jobs:
               "aerodromos.csv"
           )
 
-          # Proteção contra arquivo vazio/
-          # resposta incorreta do servidor.
-          MINIMO_REGISTROS = 700
+          # Proteção contra uma resposta
+          # anormalmente pequena da ANAC.
+          MINIMO_REGISTROS = 8000
 
 
           print()
@@ -83,7 +83,9 @@ jobs:
 
 
           requisicao = urllib.request.Request(
+
               URL,
+
               headers={
                   "User-Agent":
                   "Mozilla/5.0 "
@@ -92,6 +94,7 @@ jobs:
                   "(KHTML, like Gecko) "
                   "Chrome/120 Safari/537.36"
               }
+
           )
 
 
@@ -126,11 +129,12 @@ jobs:
               )
 
 
-          if len(dados) < 1000:
+          if len(dados) < 100000:
 
               raise Exception(
-                  "Arquivo ANAC muito pequeno. "
-                  "Base atual NÃO será alterada."
+                  "Arquivo ANAC inesperadamente "
+                  "pequeno. "
+                  "Base atual preservada."
               )
 
 
@@ -142,9 +146,9 @@ jobs:
 
           for encoding in (
               "utf-8-sig",
-              "latin1",
+              "utf-8",
               "cp1252",
-              "utf-8"
+              "latin1"
           ):
 
               try:
@@ -162,14 +166,14 @@ jobs:
 
               except UnicodeDecodeError:
 
-                  pass
+                  continue
 
 
           if texto is None:
 
               raise Exception(
                   "Não foi possível decodificar "
-                  "o arquivo da ANAC."
+                  "o CSV da ANAC."
               )
 
 
@@ -177,7 +181,10 @@ jobs:
           # IDENTIFICAR SEPARADOR
           # ==========================================
 
-          primeira_linha = texto.splitlines()[0]
+          primeira_linha = (
+              texto
+              .splitlines()[0]
+          )
 
 
           if ";" in primeira_linha:
@@ -197,7 +204,7 @@ jobs:
 
 
           print(
-              "Separador identificado:",
+              "Separador:",
               repr(separador)
           )
 
@@ -209,17 +216,18 @@ jobs:
           # ==========================================
 
           leitor = csv.DictReader(
+
               io.StringIO(texto),
+
               delimiter=separador
+
           )
 
 
-          colunas = [
-              str(x)
-              for x in (
-                  leitor.fieldnames or []
-              )
-          ]
+          colunas = (
+              leitor.fieldnames
+              or []
+          )
 
 
           print("Colunas encontradas:")
@@ -256,12 +264,12 @@ jobs:
                   "Mínimo esperado: "
                   + str(MINIMO_REGISTROS)
                   + ". "
-                  "O arquivo atual será preservado."
+                  "Base atual preservada."
               )
 
 
           # ==========================================
-          # NORMALIZAR CAMPO
+          # FUNÇÕES DE NORMALIZAÇÃO
           # ==========================================
 
           def normalizar(
@@ -272,100 +280,81 @@ jobs:
 
                   return ""
 
-              valor = str(
-                  valor
-              ).strip()
-
-              valor = (
-                  valor
+              return (
+                  str(valor)
                   .replace(
                       "\ufeff",
                       ""
                   )
+                  .strip()
               )
 
-              return valor
 
-
-          def nome_campo(
-              nome
+          def chave_campo(
+              valor
           ):
 
-              nome = normalizar(
-                  nome
+              valor = normalizar(
+                  valor
               ).upper()
 
-              nome = (
-                  nome
-                  .replace(
-                      "Á",
-                      "A"
-                  )
-                  .replace(
-                      "À",
-                      "A"
-                  )
-                  .replace(
-                      "Ã",
-                      "A"
-                  )
-                  .replace(
-                      "Â",
-                      "A"
-                  )
-                  .replace(
-                      "É",
-                      "E"
-                  )
-                  .replace(
-                      "Ê",
-                      "E"
-                  )
-                  .replace(
-                      "Í",
-                      "I"
-                  )
-                  .replace(
-                      "Ó",
-                      "O"
-                  )
-                  .replace(
-                      "Ô",
-                      "O"
-                  )
-                  .replace(
-                      "Õ",
-                      "O"
-                  )
-                  .replace(
-                      "Ú",
-                      "U"
-                  )
-                  .replace(
-                      "Ç",
-                      "C"
-                  )
-              )
 
-              nome = re.sub(
+              substituicoes = {
+
+                  "Á": "A",
+                  "À": "A",
+                  "Ã": "A",
+                  "Â": "A",
+
+                  "É": "E",
+                  "Ê": "E",
+
+                  "Í": "I",
+
+                  "Ó": "O",
+                  "Ô": "O",
+                  "Õ": "O",
+
+                  "Ú": "U",
+
+                  "Ç": "C"
+
+              }
+
+
+              for antigo, novo in (
+                  substituicoes.items()
+              ):
+
+                  valor = valor.replace(
+                      antigo,
+                      novo
+                  )
+
+
+              valor = re.sub(
                   r"[^A-Z0-9]+",
                   "_",
-                  nome
+                  valor
               )
 
-              return nome.strip("_")
+
+              return valor.strip(
+                  "_"
+              )
 
 
           # ==========================================
           # MAPEAR COLUNAS
           # ==========================================
 
-          mapa = {}
+          mapa_colunas = {}
+
 
           for coluna in colunas:
 
-              mapa[
-                  nome_campo(
+              mapa_colunas[
+                  chave_campo(
                       coluna
                   )
               ] = coluna
@@ -378,13 +367,15 @@ jobs:
 
               for nome in nomes:
 
-                  chave = nome_campo(
+                  chave = chave_campo(
                       nome
                   )
 
-                  coluna = mapa.get(
+
+                  coluna = mapa_colunas.get(
                       chave
                   )
+
 
                   if coluna is not None:
 
@@ -395,278 +386,78 @@ jobs:
                           )
                       )
 
+
                       if valor:
 
                           return valor
+
 
               return ""
 
 
           # ==========================================
-          # CONVERTER REGISTROS
+          # CONFIRMAR COLUNA ICAO
           # ==========================================
 
-          nova_base = []
-
-          icaos = set()
-
-          duplicados = 0
-
-          sem_icao = 0
+          coluna_icao = None
 
 
-          for registro in registros:
+          for nome in (
+              "SIGLA ICAO AERÓDROMO",
+              "SIGLA ICAO",
+              "ICAO",
+              "OACI"
+          ):
 
-              icao = obter(
-                  registro,
-                  "ICAO",
-                  "OACI",
-                  "Código OACI",
-                  "Codigo OACI",
-                  "CÓDIGO OACI"
+              chave = chave_campo(
+                  nome
               )
 
 
-              icao = (
-                  icao
-                  .upper()
-                  .strip()
-              )
-
-
-              if not re.fullmatch(
-                  r"[A-Z]{4}",
-                  icao
-              ):
-
-                  sem_icao += 1
-
-                  continue
-
-
-              if icao in icaos:
-
-                  duplicados += 1
-
-                  continue
-
-
-              icaos.add(
-                  icao
-              )
-
-
-              nome = obter(
-                  registro,
-                  "Nome",
-                  "Nome do Aeródromo",
-                  "Nome Aeródromo"
-              )
-
-
-              municipio = obter(
-                  registro,
-                  "Município",
-                  "Municipio"
-              )
-
-
-              uf = obter(
-                  registro,
-                  "UF"
-              )
-
-
-              ciad = obter(
-                  registro,
-                  "CIAD"
-              )
-
-
-              latitude = obter(
-                  registro,
-                  "Latitude",
-                  "LATITUDE"
-              )
-
-
-              longitude = obter(
-                  registro,
-                  "Longitude",
-                  "LONGITUDE"
-              )
-
-
-              altitude = obter(
-                  registro,
-                  "Altitude",
-                  "Elevação",
-                  "Elevacao"
-              )
-
-
-              # ======================================
-              # CONVERTER ALTITUDE
-              # ======================================
-
-              altitude_valor = None
-
-              if altitude:
-
-                  try:
-
-                      altitude_valor = float(
-                          altitude
-                          .replace(
-                              ",",
-                              "."
-                          )
-                          .replace(
-                              "m",
-                              ""
-                          )
-                          .strip()
-                      )
-
-                  except Exception:
-
-                      altitude_valor = None
-
-
-              aeroporto = {
-
-                  "icao":
-                  icao,
-
-                  "ciad":
-                  ciad,
-
-                  "nome":
-                  nome,
-
-                  "municipio":
-                  municipio,
-
-                  "uf":
-                  uf,
-
-                  "latitude":
-                  latitude,
-
-                  "longitude":
-                  longitude,
-
-                  "elevacao":
-                  altitude_valor,
-
-                  "pistas":
-                  [],
-
-                  "frequencias":
-                  [],
-
-                  "distancias_declaradas":
-                  []
-
-              }
-
-
-              nova_base.append(
-                  aeroporto
-              )
-
-
-          # ==========================================
-          # RESULTADO DA CONVERSÃO
-          # ==========================================
-
-          print("========================================")
-          print("RESULTADO")
-          print("========================================")
-          print()
-
-          print(
-              "Registros brutos:",
-              len(registros)
-          )
-
-          print(
-              "ICAOs válidos:",
-              len(nova_base)
-          )
-
-          print(
-              "Duplicados:",
-              duplicados
-          )
-
-          print(
-              "Sem ICAO:",
-              sem_icao
-          )
-
-          print()
-
-
-          # ==========================================
-          # PROTEÇÃO
-          # ==========================================
-
-          if len(nova_base) < MINIMO_REGISTROS:
-
-              raise Exception(
-                  "ERRO CRÍTICO: somente "
-                  + str(len(nova_base))
-                  + " aeródromos válidos. "
-                  "Base atual preservada."
-              )
-
-
-          # ==========================================
-          # PROCURAR SBUR
-          # ==========================================
-
-          sbur = None
-
-          for aeroporto in nova_base:
-
-              if aeroporto["icao"] == "SBUR":
-
-                  sbur = aeroporto
+              if chave in mapa_colunas:
+
+                  coluna_icao = mapa_colunas[
+                      chave
+                  ]
 
                   break
 
 
-          if sbur is None:
+          if coluna_icao is None:
 
               raise Exception(
-                  "ERRO CRÍTICO: SBUR não encontrado."
+                  "ERRO CRÍTICO: coluna ICAO "
+                  "não encontrada na base ANAC."
               )
 
 
           print(
-              "SBUR encontrado:"
-          )
-
-          print(
-              json.dumps(
-                  sbur,
-                  ensure_ascii=False,
-                  indent=2
-              )
+              "Coluna ICAO:",
+              coluna_icao
           )
 
           print()
 
 
           # ==========================================
-          # PRESERVAR DADOS AISWEB
+          # LER BASE ANTERIOR
           # ==========================================
 
           dados_antigos = {}
 
 
           if ARQUIVO.exists():
+
+              print(
+                  "Lendo base anterior:"
+              )
+
+              print(
+                  ARQUIVO
+              )
+
+              print()
+
 
               try:
 
@@ -704,79 +495,422 @@ jobs:
                           ).upper()
 
 
-                          if codigo:
+                          if re.fullmatch(
+                              r"[A-Z]{4}",
+                              codigo
+                          ):
 
                               dados_antigos[
                                   codigo
                               ] = item
 
 
+                      print(
+                          "Registros anteriores:",
+                          len(dados_antigos)
+                      )
+
+                      print()
+
+
               except Exception as erro:
 
                   print(
-                      "Aviso ao ler base anterior:",
+                      "Aviso: não foi possível "
+                      "ler a base anterior."
+                  )
+
+                  print(
                       erro
                   )
 
+                  print()
+
+
+          # ==========================================
+          # CONSTRUIR NOVA BASE
+          # ==========================================
+
+          nova_base = []
+
+          icaos = set()
+
+          duplicados = 0
+
+          sem_icao = 0
 
           preservados = 0
 
 
-          for aeroporto in nova_base:
+          for registro in registros:
 
-              codigo = aeroporto[
-                  "icao"
-              ]
+              icao = obter(
 
+                  registro,
 
-              anterior = dados_antigos.get(
-                  codigo
+                  "SIGLA ICAO AERÓDROMO",
+                  "SIGLA ICAO",
+                  "ICAO",
+                  "OACI"
+
               )
 
 
-              if anterior is None:
+              icao = (
+                  icao
+                  .upper()
+                  .strip()
+              )
+
+
+              # ======================================
+              # VALIDAR ICAO
+              # ======================================
+
+              if not re.fullmatch(
+                  r"[A-Z]{4}",
+                  icao
+              ):
+
+                  sem_icao += 1
 
                   continue
 
 
-              for campo in (
-                  "pistas",
-                  "frequencias",
-                  "distancias_declaradas"
-              ):
+              # ======================================
+              # REMOVER DUPLICADOS
+              # ======================================
 
-                  valor = anterior.get(
-                      campo
-                  )
+              if icao in icaos:
 
+                  duplicados += 1
+
+                  continue
+
+
+              icaos.add(
+                  icao
+              )
+
+
+              # ======================================
+              # CAMPOS SIROS
+              # ======================================
+
+              iata = obter(
+
+                  registro,
+
+                  "SIGLA IATA AERÓDROMO",
+                  "SIGLA IATA",
+                  "IATA"
+
+              )
+
+
+              nome = obter(
+
+                  registro,
+
+                  "NOME AERÓDROMO",
+                  "NOME",
+                  "Nome Aeródromo"
+
+              )
+
+
+              municipio = obter(
+
+                  registro,
+
+                  "MUNICÍPIO AERÓDROMO",
+                  "MUNICIPIO AERODROMO",
+                  "MUNICÍPIO",
+                  "MUNICIPIO"
+
+              )
+
+
+              uf = obter(
+
+                  registro,
+
+                  "ESTADO AERÓDROMO",
+                  "ESTADO",
+                  "UF"
+
+              )
+
+
+              pais = obter(
+
+                  registro,
+
+                  "PAÍS AERÓDROMO",
+                  "PAIS AERODROMO",
+                  "PAÍS",
+                  "PAIS"
+
+              )
+
+
+              aeronave_critica = obter(
+
+                  registro,
+
+                  "AERONAVE CRÍTICA",
+                  "AERONAVE CRITICA"
+
+              )
+
+
+              latitude = obter(
+
+                  registro,
+
+                  "LATITUDE"
+
+              )
+
+
+              longitude = obter(
+
+                  registro,
+
+                  "LONGITUDE"
+
+              )
+
+
+              # ======================================
+              # DADOS ANTIGOS / AISWEB
+              # ======================================
+
+              anterior = dados_antigos.get(
+                  icao
+              )
+
+
+              pistas = []
+
+              frequencias = []
+
+              distancias = []
+
+
+              if anterior:
 
                   if isinstance(
-                      valor,
+                      anterior.get(
+                          "pistas"
+                      ),
                       list
                   ):
 
-                      aeroporto[
-                          campo
-                      ] = valor
+                      pistas = anterior[
+                          "pistas"
+                      ]
 
 
-              if (
-                  aeroporto["pistas"]
-                  or
-                  aeroporto["frequencias"]
-                  or
-                  aeroporto[
-                      "distancias_declaradas"
-                  ]
-              ):
+                  if isinstance(
+                      anterior.get(
+                          "frequencias"
+                      ),
+                      list
+                  ):
 
-                  preservados += 1
+                      frequencias = anterior[
+                          "frequencias"
+                      ]
+
+
+                  if isinstance(
+                      anterior.get(
+                          "distancias_declaradas"
+                      ),
+                      list
+                  ):
+
+                      distancias = anterior[
+                          "distancias_declaradas"
+                      ]
+
+
+                  if (
+                      pistas
+                      or frequencias
+                      or distancias
+                  ):
+
+                      preservados += 1
+
+
+              # ======================================
+              # CRIAR REGISTRO
+              # ======================================
+
+              aeroporto = {
+
+                  "icao":
+                  icao,
+
+                  "iata":
+                  iata,
+
+                  "nome":
+                  nome,
+
+                  "municipio":
+                  municipio,
+
+                  "uf":
+                  uf,
+
+                  "pais":
+                  pais,
+
+                  "aeronave_critica":
+                  aeronave_critica,
+
+                  "latitude":
+                  latitude,
+
+                  "longitude":
+                  longitude,
+
+                  "pistas":
+                  pistas,
+
+                  "frequencias":
+                  frequencias,
+
+                  "distancias_declaradas":
+                  distancias
+
+              }
+
+
+              nova_base.append(
+                  aeroporto
+              )
+
+
+          # ==========================================
+          # RESULTADO
+          # ==========================================
+
+          print(
+              "========================================"
+          )
+
+          print(
+              "RESULTADO"
+          )
+
+          print(
+              "========================================"
+          )
+
+          print()
 
 
           print(
-              "Dados AISWEB preservados:",
+              "Registros brutos:",
+              len(registros)
+          )
+
+
+          print(
+              "ICAOs válidos:",
+              len(nova_base)
+          )
+
+
+          print(
+              "Duplicados:",
+              duplicados
+          )
+
+
+          print(
+              "Sem ICAO:",
+              sem_icao
+          )
+
+
+          print(
+              "Registros com dados anteriores "
+              "preservados:",
               preservados
           )
+
+
+          print()
+
+
+          # ==========================================
+          # VALIDAÇÃO FINAL
+          # ==========================================
+
+          if len(nova_base) < MINIMO_REGISTROS:
+
+              raise Exception(
+
+                  "ERRO CRÍTICO: somente "
+                  + str(len(nova_base))
+                  + " aeródromos válidos. "
+                  "Base atual preservada."
+
+              )
+
+
+          # ==========================================
+          # PROCURAR SBUR
+          # ==========================================
+
+          sbur = None
+
+
+          for aeroporto in nova_base:
+
+              if aeroporto["icao"] == "SBUR":
+
+                  sbur = aeroporto
+
+                  break
+
+
+          if sbur is None:
+
+              raise Exception(
+                  "ERRO CRÍTICO: SBUR "
+                  "não foi encontrado."
+              )
+
+
+          print(
+              "========================================"
+          )
+
+          print(
+              "SBUR ENCONTRADO"
+          )
+
+          print(
+              "========================================"
+          )
+
+          print()
+
+
+          print(
+              json.dumps(
+                  sbur,
+                  ensure_ascii=False,
+                  indent=2
+              )
+          )
+
 
           print()
 
@@ -797,10 +931,15 @@ jobs:
           ) as arquivo:
 
               json.dump(
+
                   nova_base,
+
                   arquivo,
+
                   ensure_ascii=False,
+
                   indent=2
+
               )
 
               arquivo.write(
@@ -852,17 +991,27 @@ jobs:
 
 
           # ==========================================
-          # FINAL
+          # FINALIZAÇÃO PYTHON
           # ==========================================
 
           print()
-          print("========================================")
-          print("✓ BASE ATUALIZADA")
-          print("========================================")
+
+          print(
+              "========================================"
+          )
+
+          print(
+              "✓ BASE RECONSTRUÍDA COM SUCESSO"
+          )
+
+          print(
+              "========================================"
+          )
+
           print()
 
           print(
-              "Aeródromos:",
+              "Total de aeródromos:",
               len(nova_base)
           )
 
@@ -941,3 +1090,4 @@ jobs:
           echo "LEOSPOTTER"
           echo "ATUALIZAÇÃO CONCLUÍDA"
           echo "========================================"
+          echo ""
