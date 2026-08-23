@@ -2,11 +2,38 @@
 <html lang="pt-BR">
 
 <head>
+
+    <!-- ==========================================
+         PWA
+         ========================================== -->
+
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#0b5ed7">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="LeoSpotter">
+
+    <meta
+        name="theme-color"
+        content="#0b5ed7"
+    >
+
+    <meta
+        name="apple-mobile-web-app-capable"
+        content="yes"
+    >
+
+    <meta
+        name="apple-mobile-web-app-status-bar-style"
+        content="default"
+    >
+
+    <meta
+        name="apple-mobile-web-app-title"
+        content="LeoSpotter"
+    >
+
+
+    <!-- ==========================================
+         META
+         ========================================== -->
+
     <meta charset="UTF-8">
 
     <meta
@@ -19,16 +46,9 @@
         content="LeoSpotter - Manual de consulta para spotters e entusiastas da aviação"
     >
 
-    <meta
-        name="theme-color"
-        content="#0b3d91"
-    >
-
-    <title>LeoSpotter</title>
-
 
     <!-- ==========================================
-         GOOGLE ANALYTICS 4
+         GOOGLE ANALYTICS
          ========================================== -->
 
     <script
@@ -38,18 +58,38 @@
 
     <script>
 
-        window.dataLayer = window.dataLayer || [];
+        window.dataLayer =
+            window.dataLayer || [];
 
         function gtag() {
             dataLayer.push(arguments);
         }
 
-        gtag('js', new Date());
+        gtag(
+            'js',
+            new Date()
+        );
 
-        gtag('config', 'G-H67RRRLSDS');
+        gtag(
+            'config',
+            'G-H67RRRLSDS'
+        );
 
     </script>
 
+
+    <!-- ==========================================
+         TÍTULO
+         ========================================== -->
+
+    <title>
+        LeoSpotter
+    </title>
+
+
+    <!-- ==========================================
+         CSS
+         ========================================== -->
 
     <link
         rel="stylesheet"
@@ -317,7 +357,7 @@
 
 
             <!-- ==========================================
-                 DISTÂNCIAS DECLARADAS
+                 DISTÂNCIAS
                  ========================================== -->
 
             <div class="subsecao-aerodromo">
@@ -440,8 +480,6 @@
             </div>
 
 
-            <!-- PREVISÕES DE AERONAVES -->
-
             <datalist id="listaAeronaves">
 
                 <option value="PS-BZR">
@@ -473,6 +511,7 @@
             class="resultado hidden"
         >
 
+
             <div class="resultado-header">
 
                 <div>
@@ -502,7 +541,9 @@
 
 
 
-            <!-- DADOS DA AERONAVE -->
+            <!-- ==========================================
+                 DADOS DA AERONAVE
+                 ========================================== -->
 
             <div class="dados-aeronave">
 
@@ -659,7 +700,9 @@
 
 
 
-                <!-- FORMULÁRIO DE FOTO -->
+                <!-- ==========================================
+                     FORMULÁRIO DE FOTO
+                     ========================================== -->
 
                 <div
                     id="formularioFoto"
@@ -835,7 +878,7 @@
 
 
         <!-- ==========================================
-             ESTATÍSTICAS
+             ESTATÍSTICAS DO ACERVO
              ========================================== -->
 
         <section class="estatisticas">
@@ -899,7 +942,6 @@
          ========================================== -->
 
     <footer>
-
 
         <div class="rodape-conteudo">
 
@@ -1036,47 +1078,81 @@
 
         </div>
 
-
     </footer>
 
 
 
     <!-- ==========================================
-         JAVASCRIPT
+         SUPABASE
+         ========================================== -->
+
+    <!-- Biblioteca oficial do Supabase -->
+
+    <script
+        src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+    ></script>
+
+
+    <!-- Configuração do projeto -->
+
+    <script src="supabase/config.js"></script>
+
+
+    <!-- Integração de fotografias -->
+
+    <script src="supabase/fotos.js"></script>
+
+
+
+    <!-- ==========================================
+         JAVASCRIPT PRINCIPAL
          ========================================== -->
 
     <script src="app.js"></script>
+
+
+
+    <!-- ==========================================
+         SERVICE WORKER / PWA
+         ========================================== -->
 
     <script>
 
         if ("serviceWorker" in navigator) {
 
-            window.addEventListener("load", () => {
+            window.addEventListener(
+                "load",
+                () => {
 
-                navigator.serviceWorker.register("./service-worker.js")
+                    navigator.serviceWorker
+                        .register(
+                            "./service-worker.js"
+                        )
 
-                    .then(() => {
+                        .then(() => {
 
-                        console.log(
-                            "LeoSpotter: Service Worker registrado."
-                        );
+                            console.log(
+                                "LeoSpotter: Service Worker registrado."
+                            );
 
-                    })
+                        })
 
-                    .catch(erro => {
+                        .catch(erro => {
 
-                        console.error(
-                            "LeoSpotter: erro ao registrar Service Worker:",
-                            erro
-                        );
+                            console.error(
+                                "LeoSpotter: erro ao registrar Service Worker:",
+                                erro
+                            );
 
-                    });
+                        });
 
-            });
+                }
+            );
 
         }
 
     </script>
+
 
 </body>
 
