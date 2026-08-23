@@ -2,6 +2,7 @@ name: Atualizar aeroportos
 
 on:
   workflow_dispatch:
+
   schedule:
     - cron: "0 3 * * 1"
 
@@ -9,13 +10,24 @@ permissions:
   contents: write
 
 jobs:
+
   atualizar:
+
     runs-on: ubuntu-latest
 
     steps:
 
+      # ==========================================
+      # BAIXAR REPOSITÓRIO
+      # ==========================================
+
       - name: Baixar repositório
         uses: actions/checkout@v4
+
+
+      # ==========================================
+      # ATUALIZAR BASE
+      # ==========================================
 
       - name: Atualizar base de aeroportos
         run: |
@@ -26,6 +38,7 @@ jobs:
           import re
           import time
           import urllib.request
+
           from html import unescape
           from pathlib import Path
 
@@ -36,44 +49,205 @@ jobs:
 
           ARQUIVO = Path("data/aeroportos.json")
 
+          ARQUIVO_TEMP = Path(
+              "data/aeroportos.tmp.json"
+          )
+
+          MINIMO_AERODROMOS = 7000
+
           INTERVALO = 0.3
 
+
+          print()
           print("========================================")
+          print("LEOSPOTTER")
           print("ATUALIZAÇÃO DA BASE DE AEROPORTOS")
           print("========================================")
           print()
 
 
           # ==========================================
-          # LER BASE EXISTENTE
+          # VERIFICAR EXISTÊNCIA
           # ==========================================
 
-          print("Lendo:")
-          print(ARQUIVO)
-          print()
+          if not ARQUIVO.exists():
 
-          with open(
-              ARQUIVO,
-              "r",
-              encoding="utf-8"
-          ) as arquivo:
-
-              aeroportos = json.load(
-                  arquivo
+              raise Exception(
+                  "ERRO CRÍTICO: "
+                  "data/aeroportos.json não existe."
               )
 
 
+          # ==========================================
+          # VERIFICAR TAMANHO
+          # ==========================================
+
+          tamanho = ARQUIVO.stat().st_size
+
           print(
-              "Aeroportos encontrados:",
-              len(aeroportos)
+              "Tamanho atual:",
+              tamanho,
+              "bytes"
+          )
+
+
+          if tamanho < 1000:
+
+              raise Exception(
+                  "ERRO CRÍTICO: "
+                  "aeroportos.json parece vazio "
+                  "ou corrompido."
+              )
+
+
+          # ==========================================
+          # LER JSON
+          # ==========================================
+
+          print()
+          print("Lendo base existente...")
+
+
+          try:
+
+              with open(
+                  ARQUIVO,
+                  "r",
+                  encoding="utf-8"
+              ) as arquivo:
+
+                  aeroportos = json.load(
+                      arquivo
+                  )
+
+          except Exception as erro:
+
+              raise Exception(
+                  "ERRO CRÍTICO: "
+                  "aeroportos.json não contém "
+                  "JSON válido.\n"
+                  + str(erro)
+              )
+
+
+          # ==========================================
+          # VALIDAR ESTRUTURA
+          # ==========================================
+
+          if not isinstance(
+              aeroportos,
+              list
+          ):
+
+              raise Exception(
+                  "ERRO CRÍTICO: "
+                  "aeroportos.json não contém "
+                  "uma lista."
+              )
+
+
+          quantidade = len(
+              aeroportos
+          )
+
+
+          print(
+              "Aeródromos encontrados:",
+              quantidade
           )
 
 
           # ==========================================
-          # FUNÇÃO AISWEB
+          # PROTEÇÃO CONTRA BASE INCOMPLETA
+          # ==========================================
+
+          if quantidade < MINIMO_AERODROMOS:
+
+              raise Exception(
+                  "ERRO CRÍTICO: "
+                  f"a base possui apenas "
+                  f"{quantidade} registros. "
+                  f"Mínimo esperado: "
+                  f"{MINIMO_AERODROMOS}."
+              )
+
+
+          # ==========================================
+          # VALIDAR ICAOs
+          # ==========================================
+
+          icaos_validos = 0
+          icaos_invalidos = 0
+
+
+          for aeroporto in aeroportos:
+
+              if not isinstance(
+                  aeroporto,
+                  dict
+              ):
+
+                  icaos_invalidos += 1
+
+                  continue
+
+
+              icao = aeroporto.get(
+                  "icao"
+              )
+
+
+              if (
+                  isinstance(
+                      icao,
+                      str
+                  )
+                  and
+                  re.fullmatch(
+                      r"[A-Z0-9]{4}",
+                      icao.strip().upper()
+                  )
+              ):
+
+                  icaos_validos += 1
+
+              else:
+
+                  icaos_invalidos += 1
+
+
+          print(
+              "ICAOs válidos:",
+              icaos_validos
+          )
+
+          print(
+              "ICAOs inválidos:",
+              icaos_invalidos
+          )
+
+
+          if icaos_validos < MINIMO_AERODROMOS:
+
+              raise Exception(
+                  "ERRO CRÍTICO: "
+                  "quantidade de ICAOs válidos "
+                  "abaixo do esperado."
+              )
+
+
+          print()
+          print(
+              "✓ BASE ORIGINAL VALIDADA"
+          )
+
+
+          # ==========================================
+          # CONSULTAR AISWEB
           # ==========================================
 
           def consultar_aisweb(icao):
+
 
               url = (
                   "https://aisweb.decea.mil.br/"
@@ -82,33 +256,55 @@ jobs:
                   + "&i=aerodromos"
               )
 
+
               requisicao = urllib.request.Request(
 
                   url,
 
                   headers={
+
                       "User-Agent":
+
                       "Mozilla/5.0 "
                       "(Windows NT 10.0; Win64; x64) "
                       "AppleWebKit/537.36 "
                       "(KHTML, like Gecko) "
                       "Chrome/120 Safari/537.36"
+
                   }
 
               )
 
+
               with urllib.request.urlopen(
+
                   requisicao,
+
                   timeout=60
+
               ) as resposta:
 
                   conteudo = resposta.read()
 
 
+                  status = resposta.status
+
+
+              if status != 200:
+
+                  raise Exception(
+                      f"HTTP {status}"
+                  )
+
+
               texto = conteudo.decode(
+
                   "utf-8",
+
                   errors="replace"
+
               )
+
 
               texto = unescape(
                   texto
@@ -120,52 +316,92 @@ jobs:
               # ======================================
 
               texto = re.sub(
+
                   r"<script.*?</script>",
+
                   " ",
+
                   texto,
+
                   flags=re.I | re.S
+
               )
 
+
               texto = re.sub(
+
                   r"<style.*?</style>",
+
                   " ",
+
                   texto,
+
                   flags=re.I | re.S
+
               )
 
+
               texto = re.sub(
+
                   r"<br\s*/?>",
+
                   "\n",
+
                   texto,
+
                   flags=re.I
+
               )
 
+
               texto = re.sub(
+
                   r"</p>|</div>|</tr>|</li>|</h[1-6]>",
+
                   "\n",
+
                   texto,
+
                   flags=re.I
+
               )
 
+
               texto = re.sub(
+
                   r"<[^>]+>",
+
                   " ",
+
                   texto
+
               )
 
+
               texto = re.sub(
+
                   r"[ \t]+",
+
                   " ",
+
                   texto
+
               )
 
+
               texto = re.sub(
+
                   r"\n\s*\n+",
+
                   "\n",
+
                   texto
+
               )
+
 
               texto = texto.strip()
+
 
               texto_upper = texto.upper()
 
@@ -182,18 +418,25 @@ jobs:
 
 
               # ======================================
-              # PISTA
+              # PISTAS
               # ======================================
 
               padrao_pista = re.search(
 
                   r"(\d{2})\s*-\s*.*?"
+
                   r"\(\s*"
+
                   r"(\d+)\s*[xX]\s*(\d+)"
+
                   r"\s+([A-Z0-9]+)"
+
                   r"\s+([0-9]+/[A-Z0-9/]+)"
+
                   r".*?"
+
                   r"\)\s*-\s*.*?"
+
                   r"-\s*(\d{2})",
 
                   texto_upper,
@@ -207,25 +450,28 @@ jobs:
 
                   resultado["pistas"].append({
 
-                      "designacao":
+                      "identificacao":
+
                       padrao_pista.group(1)
                       + "/"
                       + padrao_pista.group(6),
 
-                      "comprimento":
-                      int(
-                          padrao_pista.group(2)
-                      ),
 
-                      "largura":
-                      int(
-                          padrao_pista.group(3)
-                      ),
+                      "piso":
 
-                      "superficie":
                       padrao_pista.group(4),
 
-                      "pcr":
+
+                      "dimensoes":
+
+                      padrao_pista.group(2)
+                      + " x "
+                      + padrao_pista.group(3)
+                      + " m",
+
+
+                      "resistencia":
+
                       padrao_pista.group(5)
 
                   })
@@ -238,10 +484,15 @@ jobs:
               frequencias = re.findall(
 
                   r"(?:COM\s*-\s*)?"
+
                   r"([A-ZÀ-Ú0-9 /-]{2,40})"
+
                   r"\s+\[\d+\]"
+
                   r"(?:\s+\[\d+\])*"
+
                   r"\s+"
+
                   r"(\d{3}\.\d{3})",
 
                   texto_upper
@@ -249,16 +500,25 @@ jobs:
               )
 
 
-              for servico, frequencia in frequencias:
+              for (
+
+                  servico,
+
+                  frequencia
+
+              ) in frequencias:
+
 
                   servico = servico.strip()
 
 
                   existe = any(
 
-                      f["servico"] == servico
+                      f["orgao"] == servico
+
                       and
-                      f["frequencia"] == frequencia
+
+                      f["valor"] == frequencia
 
                       for f in resultado[
                           "frequencias"
@@ -273,11 +533,14 @@ jobs:
                           "frequencias"
                       ].append({
 
-                          "servico":
+                          "orgao":
                           servico,
 
-                          "frequencia":
-                          frequencia
+                          "valor":
+                          frequencia,
+
+                          "observacao":
+                          ""
 
                       })
 
@@ -309,6 +572,7 @@ jobs:
 
               ) in padrao_distancias:
 
+
                   resultado[
                       "distancias_declaradas"
                   ].append({
@@ -335,10 +599,21 @@ jobs:
               # VALIDAÇÃO
               # ======================================
 
-              if not resultado["pistas"]:
+              if not resultado[
+                  "pistas"
+              ]:
 
                   raise Exception(
                       "Nenhuma pista encontrada"
+                  )
+
+
+              if not resultado[
+                  "frequencias"
+              ]:
+
+                  raise Exception(
+                      "Nenhuma frequência encontrada"
                   )
 
 
@@ -353,11 +628,19 @@ jobs:
           erros = 0
           sem_icao = 0
 
+          total_pistas = 0
+          total_frequencias = 0
+          total_distancias = 0
+
 
           for numero, aeroporto in enumerate(
+
               aeroportos,
+
               start=1
+
           ):
+
 
               icao = aeroporto.get(
                   "icao"
@@ -376,38 +659,39 @@ jobs:
               ).strip().upper()
 
 
+              print()
+
               print(
-                  f"[{numero}/{len(aeroportos)}] "
+                  f"[{numero}/{quantidade}] "
                   f"Consultando {icao}..."
               )
 
 
               try:
 
-                  dados_aisweb = consultar_aisweb(
+
+                  dados = consultar_aisweb(
                       icao
                   )
 
 
-                  # ==================================
-                  # ATUALIZAR SOMENTE SE DEU CERTO
-                  # ==================================
-
                   aeroporto[
                       "pistas"
-                  ] = dados_aisweb[
+                  ] = dados[
                       "pistas"
                   ]
 
+
                   aeroporto[
                       "frequencias"
-                  ] = dados_aisweb[
+                  ] = dados[
                       "frequencias"
                   ]
+
 
                   aeroporto[
                       "distancias_declaradas"
-                  ] = dados_aisweb[
+                  ] = dados[
                       "distancias_declaradas"
                   ]
 
@@ -415,18 +699,56 @@ jobs:
                   atualizados += 1
 
 
+                  total_pistas += len(
+                      dados["pistas"]
+                  )
+
+
+                  total_frequencias += len(
+                      dados["frequencias"]
+                  )
+
+
+                  total_distancias += len(
+                      dados[
+                          "distancias_declaradas"
+                      ]
+                  )
+
+
                   print(
                       f"  ✓ {icao} atualizado"
                   )
 
 
+                  print(
+                      f"    Pistas: "
+                      f"{len(dados['pistas'])}"
+                  )
+
+
+                  print(
+                      f"    Frequências: "
+                      f"{len(dados['frequencias'])}"
+                  )
+
+
+                  print(
+                      f"    Distâncias: "
+                      f"{len(dados['distancias_declaradas'])}"
+                  )
+
+
               except Exception as erro:
 
+
                   erros += 1
+
 
                   print(
                       f"  ! {icao}: {erro}"
                   )
+
 
                   print(
                       "    Mantendo dados anteriores."
@@ -439,21 +761,79 @@ jobs:
 
 
           # ==========================================
-          # SALVAR
+          # NÃO PERMITIR BASE SEM ATUALIZAÇÕES
           # ==========================================
 
+          print()
+          print(
+              "========================================"
+          )
+
+          print(
+              "VALIDANDO RESULTADO"
+          )
+
+          print(
+              "========================================"
+          )
+
+
+          print(
+              "Atualizados:",
+              atualizados
+          )
+
+          print(
+              "Erros:",
+              erros
+          )
+
+
+          if atualizados == 0:
+
+              raise Exception(
+                  "ERRO CRÍTICO: "
+                  "nenhum aeródromo foi atualizado."
+              )
+
+
+          # ==========================================
+          # SALVAR EM ARQUIVO TEMPORÁRIO
+          # ==========================================
+
+          print()
+          print(
+              "Gravando arquivo temporário:"
+          )
+
+          print(
+              ARQUIVO_TEMP
+          )
+
+
           with open(
-              ARQUIVO,
+
+              ARQUIVO_TEMP,
+
               "w",
+
               encoding="utf-8"
+
           ) as arquivo:
 
+
               json.dump(
+
                   aeroportos,
+
                   arquivo,
+
                   ensure_ascii=False,
+
                   indent=2
+
               )
+
 
               arquivo.write(
                   "\n"
@@ -461,17 +841,98 @@ jobs:
 
 
           # ==========================================
+          # VALIDAR ARQUIVO TEMPORÁRIO
+          # ==========================================
+
+          print()
+          print(
+              "Validando arquivo temporário..."
+          )
+
+
+          try:
+
+              with open(
+
+                  ARQUIVO_TEMP,
+
+                  "r",
+
+                  encoding="utf-8"
+
+              ) as arquivo:
+
+                  teste = json.load(
+                      arquivo
+                  )
+
+
+          except Exception as erro:
+
+              raise Exception(
+
+                  "ERRO CRÍTICO: "
+                  "arquivo temporário inválido.\n"
+                  + str(erro)
+
+              )
+
+
+          if not isinstance(
+              teste,
+              list
+          ):
+
+              raise Exception(
+                  "ERRO CRÍTICO: "
+                  "arquivo temporário não é uma lista."
+              )
+
+
+          if len(teste) < MINIMO_AERODROMOS:
+
+              raise Exception(
+                  "ERRO CRÍTICO: "
+                  "arquivo temporário possui "
+                  "menos registros que o mínimo."
+              )
+
+
+          # ==========================================
+          # SUBSTITUIR ARQUIVO ORIGINAL
+          # ==========================================
+
+          ARQUIVO_TEMP.replace(
+              ARQUIVO
+          )
+
+
+          print()
+          print(
+              "✓ NOVA BASE VALIDADA E SALVA"
+          )
+
+
+          # ==========================================
           # RESUMO
           # ==========================================
 
           print()
-          print("========================================")
-          print("RESUMO")
-          print("========================================")
+          print(
+              "========================================"
+          )
 
           print(
-              "Total:",
-              len(aeroportos)
+              "RESUMO FINAL"
+          )
+
+          print(
+              "========================================"
+          )
+
+          print(
+              "Total de aeródromos:",
+              quantidade
           )
 
           print(
@@ -480,7 +941,7 @@ jobs:
           )
 
           print(
-              "Com erro:",
+              "Erros:",
               erros
           )
 
@@ -489,12 +950,33 @@ jobs:
               sem_icao
           )
 
+          print(
+              "Pistas:",
+              total_pistas
+          )
+
+          print(
+              "Frequências:",
+              total_frequencias
+          )
+
+          print(
+              "Distâncias:",
+              total_distancias
+          )
+
           print()
-          print("Arquivo atualizado:")
-          print(ARQUIVO)
+
+          print(
+              "✓ PROCESSAMENTO CONCLUÍDO"
+          )
 
           PY
 
+
+      # ==========================================
+      # VERIFICAR ALTERAÇÕES
+      # ==========================================
 
       - name: Verificar alterações
         id: verificar
@@ -517,6 +999,10 @@ jobs:
           fi
 
 
+      # ==========================================
+      # COMMIT
+      # ==========================================
+
       - name: Commit e push
         if: steps.verificar.outputs.alterado == 'true'
         run: |
@@ -533,9 +1019,16 @@ jobs:
 
           git push
 
+
+      # ==========================================
+      # FINALIZAÇÃO
+      # ==========================================
+
       - name: Finalização
         run: |
 
+          echo
           echo "========================================"
+          echo "LEOSPOTTER"
           echo "ATUALIZAÇÃO CONCLUÍDA"
           echo "========================================"
