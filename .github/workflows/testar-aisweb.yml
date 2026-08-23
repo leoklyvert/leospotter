@@ -1,4 +1,4 @@
-name: Inspecionar AISWEB SBUR
+name: Testar AISWEB
 
 on:
   workflow_dispatch:
@@ -8,15 +8,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-
-      - name: Inspecionar AISWEB
+      - name: Inspecionar AISWEB SBUR
         run: |
-
           python - <<'PY'
-
+          import re
           import urllib.request
           from html import unescape
-          import re
 
           ICAO = "SBUR"
 
@@ -49,29 +46,16 @@ jobs:
               request,
               timeout=60
           ) as response:
-
               html = response.read()
+              status = response.status
 
-              print("HTTP:", response.status)
-              print("Bytes:", len(html))
-
-          # ======================================
-          # SALVAR HTML ORIGINAL
-          # ======================================
-
-          with open(
-              "aisweb_sbur.html",
-              "wb"
-          ) as arquivo:
-
-              arquivo.write(html)
-
+          print("HTTP:", status)
+          print("Bytes:", len(html))
           print()
-          print("HTML original salvo.")
 
-          # ======================================
-          # CONVERTER PARA TEXTO
-          # ======================================
+          # ==========================================
+          # HTML -> TEXTO
+          # ==========================================
 
           texto = html.decode(
               "utf-8",
@@ -80,7 +64,6 @@ jobs:
 
           texto = unescape(texto)
 
-          # Remover scripts
           texto = re.sub(
               r"<script.*?</script>",
               " ",
@@ -88,7 +71,6 @@ jobs:
               flags=re.I | re.S
           )
 
-          # Remover CSS
           texto = re.sub(
               r"<style.*?</style>",
               " ",
@@ -96,7 +78,6 @@ jobs:
               flags=re.I | re.S
           )
 
-          # Quebras
           texto = re.sub(
               r"<br\s*/?>",
               "\n",
@@ -111,14 +92,12 @@ jobs:
               flags=re.I
           )
 
-          # Remover HTML
           texto = re.sub(
               r"<[^>]+>",
               " ",
               texto
           )
 
-          # Espaços
           texto = re.sub(
               r"[ \t]+",
               " ",
@@ -133,93 +112,263 @@ jobs:
 
           texto = texto.strip()
 
-          with open(
-              "aisweb_sbur.txt",
-              "w",
-              encoding="utf-8"
-          ) as arquivo:
-
-              arquivo.write(texto)
-
-          print(
-              "Texto convertido salvo."
-          )
-
-          # ======================================
-          # MOSTRAR TRECHOS IMPORTANTES
-          # ======================================
-
-          upper = texto.upper()
-
-          termos = [
-              "PISTA",
-              "RWY",
-              "FREQUÊNCIA",
-              "FREQUENCIA",
-              "COM",
-              "TWR",
-              "ATIS",
-              "AFIS",
-              "RÁDIO",
-              "RADIO",
-              "18/36",
-              "18 -",
-              "36 -",
-              "ÚLTIMA ATUALIZAÇÃO"
+          linhas = [
+              linha.strip()
+              for linha in texto.splitlines()
+              if linha.strip()
           ]
+
+          # ==========================================
+          # MOSTRAR INFORMAÇÕES DO SBUR
+          # ==========================================
+
+          print("========================================")
+          print("INFORMAÇÕES DO AERÓDROMO")
+          print("========================================")
+
+          for i, linha in enumerate(linhas):
+
+              if ICAO in linha.upper():
+
+                  inicio = max(0, i - 5)
+                  fim = min(len(linhas), i + 15)
+
+                  for n in range(inicio, fim):
+                      print(
+                          f"{n:04d}: {linhas[n]}"
+                      )
+
+                  break
+
+          # ==========================================
+          # LOCALIZAR TORA / TODA / ASDA / LDA
+          # ==========================================
 
           print()
           print("========================================")
-          print("TRECHOS ENCONTRADOS")
+          print("LOCALIZAÇÃO DAS DISTÂNCIAS DE PISTA")
           print("========================================")
 
-          linhas = upper.splitlines()
+          palavras = (
+              "TORA",
+              "TODA",
+              "ASDA",
+              "LDA"
+          )
 
           encontrados = set()
 
-          for numero, linha in enumerate(linhas):
+          for i, linha in enumerate(linhas):
 
-              for termo in termos:
+              upper = linha.upper()
 
-                  if termo in linha:
+              if any(
+                  palavra in upper
+                  for palavra in palavras
+              ):
 
-                      inicio = max(
-                          0,
-                          numero - 2
-                      )
+                  inicio = max(0, i - 10)
+                  fim = min(len(linhas), i + 20)
 
-                      fim = min(
-                          len(linhas),
-                          numero + 3
-                      )
+                  bloco = "\n".join(
+                      linhas[inicio:fim]
+                  )
 
-                      chave = (
-                          inicio,
-                          fim
-                      )
+                  if bloco in encontrados:
+                      continue
 
-                      if chave in encontrados:
-                          continue
+                  encontrados.add(bloco)
 
-                      encontrados.add(chave)
+                  print()
+                  print(
+                      f"--- região encontrada na linha {i} ---"
+                  )
 
-                      print()
+                  for n in range(inicio, fim):
                       print(
-                          f"--- linhas "
-                          f"{inicio + 1} até {fim} ---"
+                          f"{n:04d}: {linhas[n]}"
                       )
 
-                      for i in range(
-                          inicio,
-                          fim
-                      ):
+          # ==========================================
+          # LOCALIZAR RWY
+          # ==========================================
 
-                          print(
-                              f"{i + 1:04d}: "
-                              f"{linhas[i]}"
-                          )
+          print()
+          print("========================================")
+          print("LOCALIZAÇÃO DAS CABECEIRAS")
+          print("========================================")
 
-                      break
+          for i, linha in enumerate(linhas):
+
+              upper = linha.upper()
+
+              if (
+                  "RWY" in upper
+                  or "PISTA" in upper
+                  or re.search(
+                      r"\b\d{2}\s*-\s*\d{2}\b",
+                      upper
+                  )
+              ):
+
+                  inicio = max(0, i - 5)
+                  fim = min(len(linhas), i + 20)
+
+                  print()
+
+                  for n in range(inicio, fim):
+                      print(
+                          f"{n:04d}: {linhas[n]}"
+                      )
+
+          # ==========================================
+          # LOCALIZAR FREQUÊNCIAS
+          # ==========================================
+
+          print()
+          print("========================================")
+          print("LOCALIZAÇÃO DAS FREQUÊNCIAS")
+          print("========================================")
+
+          padrao_frequencia = re.compile(
+              r"\b\d{3}\.\d{3}\b"
+          )
+
+          indices = []
+
+          for i, linha in enumerate(linhas):
+
+              if padrao_frequencia.search(
+                  linha
+              ):
+
+                  indices.append(i)
+
+          if not indices:
+
+              print(
+                  "Nenhuma frequência encontrada."
+              )
+
+          else:
+
+              vistos = set()
+
+              for i in indices:
+
+                  inicio = max(0, i - 8)
+                  fim = min(len(linhas), i + 8)
+
+                  bloco = "\n".join(
+                      linhas[inicio:fim]
+                  )
+
+                  if bloco in vistos:
+                      continue
+
+                  vistos.add(bloco)
+
+                  print()
+                  print(
+                      f"--- frequência próxima à linha {i} ---"
+                  )
+
+                  for n in range(inicio, fim):
+                      print(
+                          f"{n:04d}: {linhas[n]}"
+                      )
+
+          # ==========================================
+          # TODAS AS FREQUÊNCIAS
+          # ==========================================
+
+          print()
+          print("========================================")
+          print("FREQUÊNCIAS ENCONTRADAS")
+          print("========================================")
+
+          frequencias = re.findall(
+              r"\b\d{3}\.\d{3}\b",
+              texto
+          )
+
+          unicas = []
+
+          for frequencia in frequencias:
+
+              if frequencia not in unicas:
+                  unicas.append(frequencia)
+
+          if unicas:
+
+              for frequencia in unicas:
+                  print(
+                      "Frequência:",
+                      frequencia
+                  )
+
+          else:
+
+              print(
+                  "Nenhuma frequência encontrada."
+              )
+
+          # ==========================================
+          # DATA AISWEB
+          # ==========================================
+
+          print()
+          print("========================================")
+          print("DATA DA INFORMAÇÃO")
+          print("========================================")
+
+          datas = re.findall(
+              r"ÚLTIMA ATUALIZAÇÃO\s*:?\s*"
+              r"(\d{2}/\d{2}/\d{4})",
+              texto.upper()
+          )
+
+          if datas:
+
+              for data in datas:
+                  print(
+                      "Última atualização:",
+                      data
+                  )
+
+          else:
+
+              print(
+                  "Data não encontrada."
+              )
+
+          # ==========================================
+          # COORDENADAS
+          # ==========================================
+
+          print()
+          print("========================================")
+          print("COORDENADAS")
+          print("========================================")
+
+          coordenadas = re.findall(
+              r"[NS]\s*\d{1,3}\s+\d{1,2}\s+[\d.]+\s+"
+              r"[EW]\s*\d{1,3}\s+\d{1,2}\s+[\d.]+",
+              texto.upper()
+          )
+
+          if coordenadas:
+
+              for coordenada in coordenadas:
+                  print(
+                      coordenada
+                  )
+
+          else:
+
+              print(
+                  "Coordenadas não encontradas."
+              )
 
           print()
           print("========================================")
@@ -227,11 +376,3 @@ jobs:
           print("========================================")
 
           PY
-
-      - name: Salvar arquivos para análise
-        uses: actions/upload-artifact@v4
-        with:
-          name: aisweb-sbur
-          path: |
-            aisweb_sbur.html
-            aisweb_sbur.txt
