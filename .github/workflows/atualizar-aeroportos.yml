@@ -25,10 +25,10 @@ jobs:
 
 
       # ==========================================
-      # RECONSTRUIR + ATUALIZAR BASE
+      # RECONSTRUIR BASE ANAC
       # ==========================================
 
-      - name: Atualizar base de aeroportos
+      - name: Reconstruir base de aeroportos
         run: |
 
           python - <<'PY'
@@ -37,11 +37,8 @@ jobs:
           import io
           import json
           import re
-          import time
-          import urllib.parse
           import urllib.request
 
-          from html import unescape
           from pathlib import Path
 
 
@@ -53,45 +50,49 @@ jobs:
               "data/aeroportos.json"
           )
 
-          MINIMO_AERODROMOS = 7000
-
-          INTERVALO_AISWEB = 0.3
-
-          URL_ANAC_PUBLICOS = (
-              "https://www.anac.gov.br/"
-              "acesso-a-informacao/"
-              "dados-abertos/"
-              "areas-de-atuacao/"
-              "aerodromos/"
-              "lista-de-aerodromos-publicos-v2"
+          ARQUIVO_TMP = Path(
+              "data/aeroportos.json.tmp"
           )
 
-          URL_ANAC_PRIVADOS = (
-              "https://www.anac.gov.br/"
-              "acesso-a-informacao/"
-              "dados-abertos/"
-              "areas-de-atuacao/"
-              "aerodromos/"
-              "lista-de-aerodromos-privados-v2"
+          MINIMO = 7000
+
+
+          URL_PUBLICOS = (
+              "https://sistemas.anac.gov.br/"
+              "dadosabertos/Aerodromos/"
+              "Aer%C3%B3dromos%20P%C3%BAblicos/"
+              "Lista%20de%20aer%C3%B3dromos%20p%C3%BAblicos/"
+              "AerodromosPublicos.csv"
+          )
+
+
+          URL_PRIVADOS = (
+              "https://sistemas.anac.gov.br/"
+              "dadosabertos/Aerodromos/"
+              "Aer%C3%B3dromos%20Privados/"
+              "Lista%20de%20aerodromos%20privados/"
+              "Aerodromos%20Privados/"
+              "AerodromosPrivados.csv"
           )
 
 
           print()
           print("========================================")
           print("LEOSPOTTER")
-          print("ATUALIZAÇÃO DA BASE DE AEROPORTOS")
+          print("RECONSTRUÇÃO DA BASE DE AERÓDROMOS")
           print("========================================")
           print()
 
 
           # ==========================================
-          # HTTP
+          # DOWNLOAD
           # ==========================================
 
           def baixar(url):
 
               print("Baixando:")
               print(url)
+              print()
 
               requisicao = urllib.request.Request(
                   url,
@@ -107,242 +108,38 @@ jobs:
 
               with urllib.request.urlopen(
                   requisicao,
-                  timeout=90
+                  timeout=120
               ) as resposta:
 
                   dados = resposta.read()
 
-                  status = resposta.status
-
-                  final_url = resposta.geturl()
-
-
-              print(
-                  "HTTP:",
-                  status
-              )
-
-              print(
-                  "Bytes:",
-                  len(dados)
-              )
-
-              return dados, final_url
-
-
-          # ==========================================
-          # LOCALIZAR RECURSO ANAC
-          # ==========================================
-
-          def localizar_recurso(url_pagina):
-
-              dados, final_url = baixar(
-                  url_pagina
-              )
-
-              html = dados.decode(
-                  "utf-8",
-                  errors="replace"
-              )
-
-              html = unescape(
-                  html
-              )
-
-              # --------------------------------------
-              # Procurar links CSV / JSON
-              # --------------------------------------
-
-              links = re.findall(
-                  r'href\s*=\s*["\']([^"\']+)["\']',
-                  html,
-                  flags=re.I
-              )
-
-              candidatos = []
-
-              for link in links:
-
-                  link = link.strip()
-
-                  if not link:
-                      continue
-
-                  absoluto = urllib.parse.urljoin(
-                      final_url,
-                      link
+                  print(
+                      "HTTP:",
+                      resposta.status
                   )
-
-                  texto = absoluto.lower()
-
-                  if (
-                      ".csv" in texto
-                      or
-                      ".json" in texto
-                      or
-                      "download" in texto
-                  ):
-
-                      candidatos.append(
-                          absoluto
-                      )
-
-
-              # --------------------------------------
-              # Remover duplicados
-              # --------------------------------------
-
-              candidatos = list(
-                  dict.fromkeys(
-                      candidatos
-                  )
-              )
-
-
-              print()
-              print(
-                  "Recursos encontrados:",
-                  len(candidatos)
-              )
-
-              for candidato in candidatos:
 
                   print(
-                      " -",
-                      candidato
+                      "Tamanho:",
+                      len(dados),
+                      "bytes"
                   )
 
-
-              if not candidatos:
-
-                  raise Exception(
-                      "Nenhum recurso CSV/JSON encontrado "
-                      "na página da ANAC."
-                  )
-
-
-              # --------------------------------------
-              # Tentar candidatos
-              # --------------------------------------
-
-              for candidato in candidatos:
-
-                  try:
-
-                      dados, _ = baixar(
-                          candidato
-                      )
-
-                      if len(dados) < 1000:
-                          continue
-
-                      return dados
-
-                  except Exception as erro:
-
-                      print(
-                          "Falha:",
-                          erro
-                      )
-
-
-              raise Exception(
-                  "Não foi possível baixar nenhum "
-                  "recurso válido da ANAC."
-              )
+                  return dados
 
 
           # ==========================================
-          # NORMALIZAR COLUNA
+          # LER CSV ANAC
           # ==========================================
 
-          def normalizar_coluna(valor):
-
-              valor = str(
-                  valor or ""
-              )
-
-              valor = (
-                  valor
-                  .strip()
-                  .upper()
-              )
-
-              valor = re.sub(
-                  r"[^A-Z0-9]+",
-                  "_",
-                  valor
-              )
-
-              return valor.strip("_")
-
-
-          # ==========================================
-          # LER CSV / JSON
-          # ==========================================
-
-          def interpretar_dados(dados):
-
-              # --------------------------------------
-              # JSON
-              # --------------------------------------
-
-              try:
-
-                  texto_json = dados.decode(
-                      "utf-8-sig"
-                  )
-
-                  obj = json.loads(
-                      texto_json
-                  )
-
-                  if isinstance(
-                      obj,
-                      list
-                  ):
-
-                      return obj
-
-                  if isinstance(
-                      obj,
-                      dict
-                  ):
-
-                      for chave in (
-                          "data",
-                          "dados",
-                          "aerodromos",
-                          "aeroportos",
-                          "results",
-                          "resultados"
-                      ):
-
-                          valor = obj.get(
-                              chave
-                          )
-
-                          if isinstance(
-                              valor,
-                              list
-                          ):
-
-                              return valor
-
-              except Exception:
-                  pass
-
-
-              # --------------------------------------
-              # CSV
-              # --------------------------------------
+          def ler_csv(dados):
 
               texto = None
 
               for encoding in (
-                  "utf-8-sig",
+                  "latin1",
                   "cp1252",
-                  "latin1"
+                  "utf-8-sig",
+                  "utf-8"
               ):
 
                   try:
@@ -355,67 +152,75 @@ jobs:
 
                   except UnicodeDecodeError:
 
-                      pass
+                      continue
 
 
               if texto is None:
 
                   raise Exception(
-                      "Não foi possível interpretar "
-                      "o arquivo ANAC."
+                      "Não foi possível decodificar "
+                      "o CSV da ANAC."
                   )
 
 
-              linhas = texto.splitlines()
-
-              if not linhas:
-
-                  raise Exception(
-                      "Arquivo ANAC vazio."
-                  )
-
-
-              primeira = linhas[0]
-
-              if ";" in primeira:
-
-                  delimitador = ";"
-
-              elif "," in primeira:
-
-                  delimitador = ","
-
-              elif "\t" in primeira:
-
-                  delimitador = "\t"
-
-              else:
-
-                  raise Exception(
-                      "Delimitador do CSV não identificado."
-                  )
-
-
-              leitor = csv.DictReader(
+              leitor = csv.reader(
                   io.StringIO(texto),
-                  delimiter=delimitador
+                  delimiter=";"
               )
+
+
+              linhas = list(
+                  leitor
+              )
+
+
+              if len(linhas) < 2:
+
+                  raise Exception(
+                      "CSV da ANAC vazio ou inválido."
+                  )
+
+
+              cabecalho = [
+                  str(x).strip()
+                  for x in linhas[0]
+              ]
 
 
               registros = []
 
-              for linha in leitor:
+
+              for linha in linhas[1:]:
+
+                  if not any(
+                      str(x).strip()
+                      for x in linha
+                  ):
+
+                      continue
+
 
                   registro = {}
 
-                  for chave, valor in linha.items():
 
-                      registro[
-                          normalizar_coluna(chave)
-                      ] = (
-                          str(valor or "")
-                          .strip()
-                      )
+                  for i, nome in enumerate(
+                      cabecalho
+                  ):
+
+                      if i < len(linha):
+
+                          registro[
+                              nome
+                          ] = str(
+                              linha[i]
+                          ).strip()
+
+                      else:
+
+                          registro[
+                              nome
+                          ] = ""
+
 
                   registros.append(
                       registro
@@ -426,130 +231,81 @@ jobs:
 
 
           # ==========================================
-          # LOCALIZAR VALOR
+          # NORMALIZAR NOME DE COLUNA
           # ==========================================
 
-          def valor(registro, *nomes):
+          def normalizar_nome(nome):
 
-              for nome in nomes:
-
-                  chave = normalizar_coluna(
-                      nome
-                  )
-
-                  if chave in registro:
-
-                      resultado = (
-                          registro[chave]
-                      )
-
-                      if resultado:
-
-                          return resultado
+              nome = str(
+                  nome or ""
+              ).strip().upper()
 
 
-              return ""
-
-
-          # ==========================================
-          # NÚMERO
-          # ==========================================
-
-          def converter_numero(valor_original):
-
-              if not valor_original:
-
-                  return None
-
-              texto = (
-                  str(valor_original)
-                  .strip()
-                  .replace(",", ".")
+              nome = (
+                  nome
+                  .replace("Á", "A")
+                  .replace("À", "A")
+                  .replace("Ã", "A")
+                  .replace("Â", "A")
+                  .replace("É", "E")
+                  .replace("Ê", "E")
+                  .replace("Í", "I")
+                  .replace("Ó", "O")
+                  .replace("Ô", "O")
+                  .replace("Õ", "O")
+                  .replace("Ú", "U")
+                  .replace("Ç", "C")
               )
 
-              try:
 
-                  return float(
-                      texto
-                  )
-
-              except ValueError:
-
-                  return None
+              nome = re.sub(
+                  r"[^A-Z0-9]+",
+                  "_",
+                  nome
+              )
 
 
-          # ==========================================
-          # RECONSTRUIR BASE ANAC
-          # ==========================================
-
-          print()
-          print("========================================")
-          print("BAIXANDO BASE PÚBLICA ANAC")
-          print("========================================")
-
-          dados_publicos = localizar_recurso(
-              URL_ANAC_PUBLICOS
-          )
-
-          registros_publicos = interpretar_dados(
-              dados_publicos
-          )
-
-
-          print(
-              "Registros públicos:",
-              len(registros_publicos)
-          )
-
-
-          print()
-          print("========================================")
-          print("BAIXANDO BASE PRIVADA ANAC")
-          print("========================================")
-
-          dados_privados = localizar_recurso(
-              URL_ANAC_PRIVADOS
-          )
-
-          registros_privados = interpretar_dados(
-              dados_privados
-          )
-
-
-          print(
-              "Registros privados:",
-              len(registros_privados)
-          )
-
-
-          todos = []
-
-          todos.extend(
-              registros_publicos
-          )
-
-          todos.extend(
-              registros_privados
-          )
+              return nome.strip("_")
 
 
           # ==========================================
-          # MONTAR NOVA BASE
+          # TRANSFORMAR REGISTRO
           # ==========================================
 
-          nova_base = []
+          def transformar(registro):
 
-          icaos = set()
+              campos = {
+                  normalizar_nome(
+                      chave
+                  ): valor
+                  for chave, valor
+                  in registro.items()
+              }
 
-          sem_icao = 0
 
-          duplicados = 0
+              def pegar(*nomes):
+
+                  for nome in nomes:
+
+                      chave = normalizar_nome(
+                          nome
+                      )
+
+                      if chave in campos:
+
+                          valor = campos[
+                              chave
+                          ]
+
+                          if valor:
+
+                              return valor.strip()
 
 
-          for registro in todos:
+                  return ""
 
-              icao = valor(
-                  registro,
+
+              icao = pegar(
                   "CÓDIGO OACI",
                   "CODIGO OACI",
                   "ICAO",
@@ -558,7 +314,7 @@ jobs:
 
 
               icao = (
-                  str(icao)
+                  icao
                   .strip()
                   .upper()
               )
@@ -569,98 +325,90 @@ jobs:
                   icao
               ):
 
-                  sem_icao += 1
-
-                  continue
+                  return None
 
 
-              if icao in icaos:
-
-                  duplicados += 1
-
-                  continue
-
-
-              icaos.add(
-                  icao
+              elevacao = pegar(
+                  "ALTITUDE",
+                  "ELEVAÇÃO",
+                  "ELEVACAO"
               )
 
 
-              aeroporto = {
+              try:
+
+                  if elevacao:
+
+                      elevacao = float(
+                          elevacao.replace(
+                              ",",
+                              "."
+                          )
+                      )
+
+              except Exception:
+
+                  elevacao = None
+
+
+              return {
 
                   "icao":
                   icao,
 
                   "ciad":
-                  valor(
-                      registro,
+                  pegar(
                       "CIAD"
                   ),
 
                   "nome":
-                  valor(
-                      registro,
+                  pegar(
                       "NOME"
                   ),
 
                   "municipio":
-                  valor(
-                      registro,
+                  pegar(
                       "MUNICÍPIO",
                       "MUNICIPIO"
                   ),
 
                   "uf":
-                  valor(
-                      registro,
+                  pegar(
                       "UF"
                   ),
 
                   "municipio_servido":
-                  valor(
-                      registro,
+                  pegar(
                       "MUNICÍPIO SERVIDO",
                       "MUNICIPIO SERVIDO"
                   ),
 
                   "uf_servido":
-                  valor(
-                      registro,
+                  pegar(
                       "UF SERVIDO"
                   ),
 
                   "latitude":
-                  valor(
-                      registro,
+                  pegar(
                       "LATITUDE"
                   ),
 
                   "longitude":
-                  valor(
-                      registro,
+                  pegar(
                       "LONGITUDE"
                   ),
 
                   "elevacao":
-                  converter_numero(
-                      valor(
-                          registro,
-                          "ALTITUDE",
-                          "ELEVAÇÃO",
-                          "ELEVACAO"
-                      )
-                  ),
+                  elevacao,
 
                   "operacao_diurna":
-                  valor(
-                      registro,
+                  pegar(
                       "OPERAÇÃO DIURNA",
                       "OPERACAO DIURNA"
                   ),
 
                   "operacao_noturna":
-                  valor(
-                      registro,
+                  pegar(
                       "OPERAÇÃO NOTURNA",
                       "OPERACAO NOTURNA"
                   ),
@@ -677,30 +425,135 @@ jobs:
               }
 
 
+          # ==========================================
+          # PÚBLICOS
+          # ==========================================
+
+          print()
+          print("========================================")
+          print("AERÓDROMOS PÚBLICOS")
+          print("========================================")
+
+
+          dados_publicos = baixar(
+              URL_PUBLICOS
+          )
+
+
+          publicos = ler_csv(
+              dados_publicos
+          )
+
+
+          print(
+              "Registros públicos:",
+              len(publicos)
+          )
+
+
+          # ==========================================
+          # PRIVADOS
+          # ==========================================
+
+          print()
+          print("========================================")
+          print("AERÓDROMOS PRIVADOS")
+          print("========================================")
+
+
+          dados_privados = baixar(
+              URL_PRIVADOS
+          )
+
+
+          privados = ler_csv(
+              dados_privados
+          )
+
+
+          print(
+              "Registros privados:",
+              len(privados)
+          )
+
+
+          # ==========================================
+          # COMBINAR
+          # ==========================================
+
+          print()
+          print("========================================")
+          print("COMBINANDO BASES")
+          print("========================================")
+
+
+          todos = []
+
+          todos.extend(
+              publicos
+          )
+
+          todos.extend(
+              privados
+          )
+
+
+          nova_base = []
+
+          icaos = set()
+
+          duplicados = 0
+
+          invalidos = 0
+
+
+          for registro in todos:
+
+              aeroporto = transformar(
+                  registro
+              )
+
+
+              if aeroporto is None:
+
+                  invalidos += 1
+
+                  continue
+
+
+              icao = aeroporto[
+                  "icao"
+              ]
+
+
+              if icao in icaos:
+
+                  duplicados += 1
+
+                  continue
+
+
+              icaos.add(
+                  icao
+              )
+
+
               nova_base.append(
                   aeroporto
               )
 
-
-          print()
-          print("========================================")
-          print("VALIDAÇÃO DA BASE ANAC")
-          print("========================================")
 
           print(
               "Total bruto:",
               len(todos)
           )
 
+
           print(
               "ICAOs válidos:",
               len(nova_base)
           )
 
-          print(
-              "Sem ICAO:",
-              sem_icao
-          )
 
           print(
               "Duplicados:",
@@ -708,38 +561,44 @@ jobs:
           )
 
 
+          print(
+              "Inválidos:",
+              invalidos
+          )
+
+
           # ==========================================
-          # PROTEÇÃO CONTRA BASE INCOMPLETA
+          # PROTEÇÃO
           # ==========================================
 
-          if len(nova_base) < MINIMO_AERODROMOS:
+          if len(nova_base) < MINIMO:
 
               raise Exception(
-                  "ERRO CRÍTICO: ANAC retornou apenas "
+                  "ERRO CRÍTICO: a ANAC retornou "
                   + str(len(nova_base))
-                  + " aeródromos. "
+                  + " registros. "
                   "Mínimo esperado: "
-                  + str(MINIMO_AERODROMOS)
+                  + str(MINIMO)
                   + ". "
-                  "O arquivo existente NÃO será alterado."
+                  "Arquivo atual preservado."
               )
 
 
           # ==========================================
-          # VALIDAR SBUR
+          # SBUR
           # ==========================================
 
           sbur = next(
               (
-                  aeroporto
-                  for aeroporto in nova_base
-                  if aeroporto["icao"] == "SBUR"
+                  x
+                  for x in nova_base
+                  if x["icao"] == "SBUR"
               ),
               None
           )
 
 
-          if not sbur:
+          if sbur is None:
 
               raise Exception(
                   "ERRO CRÍTICO: SBUR não encontrado."
@@ -758,10 +617,11 @@ jobs:
 
 
           # ==========================================
-          # PRESERVAR DADOS AISWEB EXISTENTES
+          # PRESERVAR AISWEB
           # ==========================================
 
-          base_anterior = []
+          anterior = {}
+
 
           if ARQUIVO.exists():
 
@@ -773,48 +633,65 @@ jobs:
                       encoding="utf-8"
                   ) as arquivo:
 
-                      base_anterior = json.load(
+                      dados_anteriores = json.load(
                           arquivo
                       )
 
-                  if not isinstance(
-                      base_anterior,
+
+                  if isinstance(
+                      dados_anteriores,
                       list
                   ):
 
-                      base_anterior = []
+                      for item in dados_anteriores:
 
-              except Exception:
+                          if not isinstance(
+                              item,
+                              dict
+                          ):
 
-                  base_anterior = []
+                              continue
 
 
-          dados_anteriores = {
-              str(
-                  item.get(
-                      "icao",
-                      ""
+                          codigo = str(
+                              item.get(
+                                  "icao",
+                                  ""
+                              )
+                          ).strip().upper()
+
+
+                          if codigo:
+
+                              anterior[
+                                  codigo
+                              ] = item
+
+
+              except Exception as erro:
+
+                  print(
+                      "Aviso:",
+                      erro
                   )
-              ).upper(): item
-              for item in base_anterior
-              if isinstance(
-                  item,
-                  dict
-              )
-          }
 
 
-          # ==========================================
-          # PRESERVAR AISWEB ANTERIOR
-          # ==========================================
+          preservados = 0
+
 
           for aeroporto in nova_base:
 
-              anterior = dados_anteriores.get(
-                  aeroporto["icao"]
+              codigo = aeroporto[
+                  "icao"
+              ]
+
+
+              antigo = anterior.get(
+                  codigo
               )
 
-              if not anterior:
+
+              if antigo is None:
 
                   continue
 
@@ -825,489 +702,66 @@ jobs:
                   "distancias_declaradas"
               ):
 
-                  valor_anterior = anterior.get(
+                  valor = antigo.get(
                       campo
                   )
 
+
                   if isinstance(
-                      valor_anterior,
+                      valor,
                       list
                   ):
 
-                      aeroporto[campo] = (
-                          valor_anterior
-                      )
-
-
-          # ==========================================
-          # AISWEB
-          # ==========================================
-
-          def consultar_aisweb(icao):
-
-              url = (
-                  "https://aisweb.decea.mil.br/"
-                  "?codigo="
-                  + icao
-                  + "&i=aerodromos"
-              )
-
-
-              requisicao = urllib.request.Request(
-
-                  url,
-
-                  headers={
-                      "User-Agent":
-                      "Mozilla/5.0 "
-                      "(Windows NT 10.0; Win64; x64) "
-                      "AppleWebKit/537.36 "
-                      "(KHTML, like Gecko) "
-                      "Chrome/120 Safari/537.36"
-                  }
-
-              )
-
-
-              with urllib.request.urlopen(
-                  requisicao,
-                  timeout=60
-              ) as resposta:
-
-                  conteudo = resposta.read()
-
-
-              texto = conteudo.decode(
-                  "utf-8",
-                  errors="replace"
-              )
-
-
-              texto = unescape(
-                  texto
-              )
-
-
-              # --------------------------------------
-              # LIMPAR HTML
-              # --------------------------------------
-
-              texto = re.sub(
-                  r"<script.*?</script>",
-                  " ",
-                  texto,
-                  flags=re.I | re.S
-              )
-
-              texto = re.sub(
-                  r"<style.*?</style>",
-                  " ",
-                  texto,
-                  flags=re.I | re.S
-              )
-
-              texto = re.sub(
-                  r"<br\s*/?>",
-                  "\n",
-                  texto,
-                  flags=re.I
-              )
-
-              texto = re.sub(
-                  r"</p>|</div>|</tr>|</li>|</h[1-6]>",
-                  "\n",
-                  texto,
-                  flags=re.I
-              )
-
-              texto = re.sub(
-                  r"<[^>]+>",
-                  " ",
-                  texto
-              )
-
-              texto = re.sub(
-                  r"[ \t]+",
-                  " ",
-                  texto
-              )
-
-              texto = re.sub(
-                  r"\n\s*\n+",
-                  "\n",
-                  texto
-              )
-
-              texto = texto.strip()
-
-              texto_upper = texto.upper()
-
-
-              resultado = {
-
-                  "pistas": [],
-
-                  "frequencias": [],
-
-                  "distancias_declaradas": []
-
-              }
-
-
-              # --------------------------------------
-              # PISTA
-              # --------------------------------------
-
-              padrao_pista = re.search(
-
-                  r"(\d{2})\s*-\s*.*?"
-                  r"\(\s*"
-                  r"(\d+)\s*[xX]\s*(\d+)"
-                  r"\s+([A-Z0-9]+)"
-                  r"\s+([0-9]+/[A-Z0-9/]+)"
-                  r".*?"
-                  r"\)\s*-\s*.*?"
-                  r"-\s*(\d{2})",
-
-                  texto_upper,
-
-                  re.S
-
-              )
-
-
-              if padrao_pista:
-
-                  resultado["pistas"].append({
-
-                      "identificacao":
-                      padrao_pista.group(1)
-                      + "/"
-                      + padrao_pista.group(6),
-
-                      "piso":
-                      padrao_pista.group(4),
-
-                      "dimensoes":
-                      padrao_pista.group(2)
-                      + " x "
-                      + padrao_pista.group(3)
-                      + " m",
-
-                      "resistencia":
-                      padrao_pista.group(5)
-
-                  })
-
-
-              # --------------------------------------
-              # FREQUÊNCIAS
-              # --------------------------------------
-
-              frequencias = re.findall(
-
-                  r"(?:COM\s*-\s*)?"
-                  r"([A-ZÀ-Ú0-9 /-]{2,40})"
-                  r"\s+\[\d+\]"
-                  r"(?:\s+\[\d+\])*"
-                  r"\s+"
-                  r"(\d{3}\.\d{3})",
-
-                  texto_upper
-
-              )
-
-
-              for servico, frequencia in frequencias:
-
-                  servico = servico.strip()
-
-
-                  existe = any(
-
-                      f["orgao"] == servico
-                      and
-                      f["valor"] == frequencia
-
-                      for f in resultado[
-                          "frequencias"
-                      ]
-
-                  )
-
-
-                  if not existe:
-
-                      resultado[
-                          "frequencias"
-                      ].append({
-
-                          "orgao":
-                          servico,
-
-                          "valor":
-                          frequencia,
-
-                          "observacao":
-                          ""
-
-                      })
-
-
-              # --------------------------------------
-              # DISTÂNCIAS
-              # --------------------------------------
-
-              padrao_distancias = re.findall(
-
-                  r"\n\s*(\d{2})\s+"
-                  r"(\d+)\s+"
-                  r"(\d+)\s+"
-                  r"(\d+)\s+"
-                  r"(\d+)",
-
-                  texto
-
-              )
-
-
-              for (
-                  cabeceira,
-                  tora,
-                  toda,
-                  asda,
-                  lda
-              ) in padrao_distancias:
-
-                  resultado[
-                      "distancias_declaradas"
-                  ].append({
-
-                      "rwy":
-                      cabeceira,
-
-                      "tora":
-                      int(tora),
-
-                      "toda":
-                      int(toda),
-
-                      "asda":
-                      int(asda),
-
-                      "lda":
-                      int(lda)
-
-                  })
-
-
-              return resultado
-
-
-          # ==========================================
-          # CONSULTAR AISWEB
-          # ==========================================
-
-          print()
-          print("========================================")
-          print("CONSULTANDO AISWEB")
-          print("========================================")
-          print()
-
-
-          atualizados = 0
-
-          falhas = 0
-
-          total_pistas = 0
-
-          total_frequencias = 0
-
-          total_distancias = 0
-
-
-          for numero, aeroporto in enumerate(
-              nova_base,
-              start=1
-          ):
-
-              icao = aeroporto["icao"]
-
-
-              print(
-                  f"[{numero}/{len(nova_base)}] "
-                  f"{icao}"
-              )
-
-
-              try:
-
-                  dados = consultar_aisweb(
-                      icao
-                  )
-
-
-                  # --------------------------------
-                  # Atualizar somente quando
-                  # houver informação
-                  # --------------------------------
-
-                  if dados["pistas"]:
-
-                      aeroporto["pistas"] = (
-                          dados["pistas"]
-                      )
-
-
-                  if dados["frequencias"]:
-
-                      aeroporto["frequencias"] = (
-                          dados["frequencias"]
-                      )
-
-
-                  if dados[
-                      "distancias_declaradas"
-                  ]:
-
                       aeroporto[
-                          "distancias_declaradas"
-                      ] = (
-                          dados[
-                              "distancias_declaradas"
-                          ]
-                      )
+                          campo
+                      ] = valor
 
 
-                  atualizados += 1
+              if (
+                  aeroporto["pistas"]
+                  or
+                  aeroporto["frequencias"]
+                  or
+                  aeroporto[
+                      "distancias_declaradas"
+                  ]
+              ):
 
+                  preservados += 1
 
-                  total_pistas += len(
-                      aeroporto["pistas"]
-                  )
-
-                  total_frequencias += len(
-                      aeroporto["frequencias"]
-                  )
-
-                  total_distancias += len(
-                      aeroporto[
-                          "distancias_declaradas"
-                      ]
-                  )
-
-
-                  print(
-                      "  ✓ atualizado"
-                  )
-
-
-              except Exception as erro:
-
-                  falhas += 1
-
-                  print(
-                      "  ! falha:",
-                      erro
-                  )
-
-                  print(
-                      "    Dados anteriores preservados."
-                  )
-
-
-              time.sleep(
-                  INTERVALO_AISWEB
-              )
-
-
-          # ==========================================
-          # VALIDAÇÃO FINAL
-          # ==========================================
 
           print()
-          print("========================================")
-          print("VALIDAÇÃO FINAL")
-          print("========================================")
+          print(
+              "Registros com dados AISWEB "
+              "preservados:",
+              preservados
+          )
 
 
-          if len(nova_base) < MINIMO_AERODROMOS:
+          # ==========================================
+          # VALIDAR NOVA BASE
+          # ==========================================
+
+          if len(nova_base) < MINIMO:
 
               raise Exception(
-                  "ERRO CRÍTICO: base final "
-                  "ficou abaixo do mínimo."
+                  "A base final ficou abaixo "
+                  "do mínimo permitido."
               )
 
 
-          sbur_final = next(
-              (
-                  aeroporto
-                  for aeroporto in nova_base
-                  if aeroporto["icao"] == "SBUR"
-              ),
-              None
-          )
-
-
-          if not sbur_final:
-
-              raise Exception(
-                  "ERRO CRÍTICO: SBUR desapareceu."
-              )
-
-
-          print(
-              "Aeródromos:",
-              len(nova_base)
-          )
-
-          print(
-              "SBUR: OK"
-          )
-
-          print(
-              "AISWEB processados:",
-              atualizados
-          )
-
-          print(
-              "Falhas AISWEB:",
-              falhas
-          )
-
-          print(
-              "Pistas:",
-              total_pistas
-          )
-
-          print(
-              "Frequências:",
-              total_frequencias
-          )
-
-          print(
-              "Distâncias:",
-              total_distancias
-          )
-
-
           # ==========================================
-          # SALVAR
+          # SALVAR TEMPORÁRIO
           # ==========================================
 
-          ARQUIVO.parent.mkdir(
-              parents=True,
-              exist_ok=True
-          )
-
-
-          arquivo_temporario = Path(
-              "data/aeroportos.json.tmp"
+          print()
+          print(
+              "Gerando arquivo temporário..."
           )
 
 
           with open(
-              arquivo_temporario,
+              ARQUIVO_TMP,
               "w",
               encoding="utf-8"
           ) as arquivo:
@@ -1324,12 +778,12 @@ jobs:
               )
 
 
-          # ------------------------------------------
-          # Validar arquivo temporário
-          # ------------------------------------------
+          # ==========================================
+          # TESTAR JSON
+          # ==========================================
 
           with open(
-              arquivo_temporario,
+              ARQUIVO_TMP,
               "r",
               encoding="utf-8"
           ) as arquivo:
@@ -1345,39 +799,55 @@ jobs:
           ):
 
               raise Exception(
-                  "Arquivo final não é uma lista JSON."
+                  "JSON final inválido."
               )
 
 
-          if len(teste) < MINIMO_AERODROMOS:
+          if len(teste) < MINIMO:
 
               raise Exception(
-                  "Arquivo final possui poucos registros."
+                  "JSON final possui menos "
+                  "de 7.000 registros."
               )
 
 
-          # ------------------------------------------
-          # Substituir somente agora
-          # ------------------------------------------
+          # ==========================================
+          # SUBSTITUIR
+          # ==========================================
 
-          arquivo_temporario.replace(
+          ARQUIVO_TMP.replace(
               ARQUIVO
           )
 
 
+          # ==========================================
+          # RESULTADO
+          # ==========================================
+
           print()
           print("========================================")
-          print("✓ BASE ATUALIZADA COM SUCESSO")
+          print("✓ BASE RECONSTRUÍDA")
           print("========================================")
+          print()
 
           print(
-              "Registros:",
+              "Total de aeródromos:",
               len(nova_base)
+          )
+
+          print(
+              "SBUR:",
+              "OK"
           )
 
           print(
               "Arquivo:",
               ARQUIVO
+          )
+
+          print()
+          print(
+              "A base está pronta para o LeoSpotter."
           )
 
           PY
@@ -1395,13 +865,13 @@ jobs:
 
             echo "alterado=false" >> "$GITHUB_OUTPUT"
 
-            echo "Nenhuma alteração na base."
+            echo "Nenhuma alteração."
 
           else
 
             echo "alterado=true" >> "$GITHUB_OUTPUT"
 
-            echo "A base foi alterada."
+            echo "Base alterada."
 
             git diff --stat -- data/aeroportos.json
 
@@ -1409,7 +879,7 @@ jobs:
 
 
       # ==========================================
-      # COMMIT E PUSH
+      # COMMIT
       # ==========================================
 
       - name: Commit e push
@@ -1425,7 +895,7 @@ jobs:
           git add data/aeroportos.json
 
           git commit \
-            -m "Atualizar base de aeroportos"
+            -m "Reconstruir base de aeroportos"
 
           git push
 
@@ -1439,5 +909,6 @@ jobs:
 
           echo ""
           echo "========================================"
+          echo "LEOSPOTTER"
           echo "ATUALIZAÇÃO CONCLUÍDA"
           echo "========================================"
