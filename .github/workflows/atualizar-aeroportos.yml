@@ -25,10 +25,10 @@ jobs:
 
 
       # ==========================================
-      # RECONSTRUIR BASE ANAC
+      # ATUALIZAR BASE
       # ==========================================
 
-      - name: Reconstruir base de aeroportos
+      - name: Baixar e processar base ANAC
         run: |
 
           python - <<'PY'
@@ -50,36 +50,25 @@ jobs:
               "data/aeroportos.json"
           )
 
-          ARQUIVO_TMP = Path(
+          TEMPORARIO = Path(
               "data/aeroportos.json.tmp"
           )
 
-          MINIMO = 7000
-
-
-          URL_PUBLICOS = (
-              "https://sistemas.anac.gov.br/"
-              "dadosabertos/Aerodromos/"
-              "Aer%C3%B3dromos%20P%C3%BAblicos/"
-              "Lista%20de%20aer%C3%B3dromos%20p%C3%BAblicos/"
-              "AerodromosPublicos.csv"
+          URL = (
+              "https://siros.anac.gov.br/"
+              "siros/registros/aerodromo/"
+              "aerodromos.csv"
           )
 
-
-          URL_PRIVADOS = (
-              "https://sistemas.anac.gov.br/"
-              "dadosabertos/Aerodromos/"
-              "Aer%C3%B3dromos%20Privados/"
-              "Lista%20de%20aerodromos%20privados/"
-              "Aerodromos%20Privados/"
-              "AerodromosPrivados.csv"
-          )
+          # Proteção contra arquivo vazio/
+          # resposta incorreta do servidor.
+          MINIMO_REGISTROS = 700
 
 
           print()
           print("========================================")
           print("LEOSPOTTER")
-          print("RECONSTRUÇÃO DA BASE DE AERÓDROMOS")
+          print("ATUALIZAÇÃO DA BASE DE AERÓDROMOS")
           print("========================================")
           print()
 
@@ -88,175 +77,275 @@ jobs:
           # DOWNLOAD
           # ==========================================
 
-          def baixar(url):
+          print("Baixando base ANAC/SIROS:")
+          print(URL)
+          print()
 
-              print("Baixando:")
-              print(url)
-              print()
 
-              requisicao = urllib.request.Request(
-                  url,
-                  headers={
-                      "User-Agent":
-                      "Mozilla/5.0 "
-                      "(Windows NT 10.0; Win64; x64) "
-                      "AppleWebKit/537.36 "
-                      "(KHTML, like Gecko) "
-                      "Chrome/120 Safari/537.36"
-                  }
+          requisicao = urllib.request.Request(
+              URL,
+              headers={
+                  "User-Agent":
+                  "Mozilla/5.0 "
+                  "(Windows NT 10.0; Win64; x64) "
+                  "AppleWebKit/537.36 "
+                  "(KHTML, like Gecko) "
+                  "Chrome/120 Safari/537.36"
+              }
+          )
+
+
+          with urllib.request.urlopen(
+              requisicao,
+              timeout=120
+          ) as resposta:
+
+              dados = resposta.read()
+
+              status = resposta.status
+
+
+          print(
+              "HTTP:",
+              status
+          )
+
+          print(
+              "Bytes:",
+              len(dados)
+          )
+
+          print()
+
+
+          if status != 200:
+
+              raise Exception(
+                  "ANAC retornou HTTP "
+                  + str(status)
               )
 
-              with urllib.request.urlopen(
-                  requisicao,
-                  timeout=120
-              ) as resposta:
 
-                  dados = resposta.read()
+          if len(dados) < 1000:
+
+              raise Exception(
+                  "Arquivo ANAC muito pequeno. "
+                  "Base atual NÃO será alterada."
+              )
+
+
+          # ==========================================
+          # DECODIFICAR
+          # ==========================================
+
+          texto = None
+
+          for encoding in (
+              "utf-8-sig",
+              "latin1",
+              "cp1252",
+              "utf-8"
+          ):
+
+              try:
+
+                  texto = dados.decode(
+                      encoding
+                  )
 
                   print(
-                      "HTTP:",
-                      resposta.status
+                      "Codificação:",
+                      encoding
                   )
 
-                  print(
-                      "Tamanho:",
-                      len(dados),
-                      "bytes"
-                  )
+                  break
 
-                  return dados
+              except UnicodeDecodeError:
+
+                  pass
 
 
-          # ==========================================
-          # LER CSV ANAC
-          # ==========================================
+          if texto is None:
 
-          def ler_csv(dados):
-
-              texto = None
-
-              for encoding in (
-                  "latin1",
-                  "cp1252",
-                  "utf-8-sig",
-                  "utf-8"
-              ):
-
-                  try:
-
-                      texto = dados.decode(
-                          encoding
-                      )
-
-                      break
-
-                  except UnicodeDecodeError:
-
-                      continue
-
-
-              if texto is None:
-
-                  raise Exception(
-                      "Não foi possível decodificar "
-                      "o CSV da ANAC."
-                  )
-
-
-              leitor = csv.reader(
-                  io.StringIO(texto),
-                  delimiter=";"
+              raise Exception(
+                  "Não foi possível decodificar "
+                  "o arquivo da ANAC."
               )
 
 
-              linhas = list(
-                  leitor
+          # ==========================================
+          # IDENTIFICAR SEPARADOR
+          # ==========================================
+
+          primeira_linha = texto.splitlines()[0]
+
+
+          if ";" in primeira_linha:
+
+              separador = ";"
+
+          elif "," in primeira_linha:
+
+              separador = ","
+
+          else:
+
+              raise Exception(
+                  "Não foi possível identificar "
+                  "o separador do CSV."
               )
 
 
-              if len(linhas) < 2:
+          print(
+              "Separador identificado:",
+              repr(separador)
+          )
 
-                  raise Exception(
-                      "CSV da ANAC vazio ou inválido."
-                  )
-
-
-              cabecalho = [
-                  str(x).strip()
-                  for x in linhas[0]
-              ]
-
-
-              registros = []
-
-
-              for linha in linhas[1:]:
-
-                  if not any(
-                      str(x).strip()
-                      for x in linha
-                  ):
-
-                      continue
-
-
-                  registro = {}
-
-
-                  for i, nome in enumerate(
-                      cabecalho
-                  ):
-
-                      if i < len(linha):
-
-                          registro[
-                              nome
-                          ] = str(
-                              linha[i]
-                          ).strip()
-
-                      else:
-
-                          registro[
-                              nome
-                          ] = ""
-
-
-                  registros.append(
-                      registro
-                  )
-
-
-              return registros
+          print()
 
 
           # ==========================================
-          # NORMALIZAR NOME DE COLUNA
+          # LER CSV
           # ==========================================
 
-          def normalizar_nome(nome):
+          leitor = csv.DictReader(
+              io.StringIO(texto),
+              delimiter=separador
+          )
 
-              nome = str(
-                  nome or ""
-              ).strip().upper()
 
+          colunas = [
+              str(x)
+              for x in (
+                  leitor.fieldnames or []
+              )
+          ]
+
+
+          print("Colunas encontradas:")
+
+          for coluna in colunas:
+
+              print(
+                  " -",
+                  coluna
+              )
+
+          print()
+
+
+          registros = list(
+              leitor
+          )
+
+
+          print(
+              "Registros brutos:",
+              len(registros)
+          )
+
+          print()
+
+
+          if len(registros) < MINIMO_REGISTROS:
+
+              raise Exception(
+                  "ERRO CRÍTICO: a ANAC retornou "
+                  + str(len(registros))
+                  + " registros. "
+                  "Mínimo esperado: "
+                  + str(MINIMO_REGISTROS)
+                  + ". "
+                  "O arquivo atual será preservado."
+              )
+
+
+          # ==========================================
+          # NORMALIZAR CAMPO
+          # ==========================================
+
+          def normalizar(
+              valor
+          ):
+
+              if valor is None:
+
+                  return ""
+
+              valor = str(
+                  valor
+              ).strip()
+
+              valor = (
+                  valor
+                  .replace(
+                      "\ufeff",
+                      ""
+                  )
+              )
+
+              return valor
+
+
+          def nome_campo(
+              nome
+          ):
+
+              nome = normalizar(
+                  nome
+              ).upper()
 
               nome = (
                   nome
-                  .replace("Á", "A")
-                  .replace("À", "A")
-                  .replace("Ã", "A")
-                  .replace("Â", "A")
-                  .replace("É", "E")
-                  .replace("Ê", "E")
-                  .replace("Í", "I")
-                  .replace("Ó", "O")
-                  .replace("Ô", "O")
-                  .replace("Õ", "O")
-                  .replace("Ú", "U")
-                  .replace("Ç", "C")
+                  .replace(
+                      "Á",
+                      "A"
+                  )
+                  .replace(
+                      "À",
+                      "A"
+                  )
+                  .replace(
+                      "Ã",
+                      "A"
+                  )
+                  .replace(
+                      "Â",
+                      "A"
+                  )
+                  .replace(
+                      "É",
+                      "E"
+                  )
+                  .replace(
+                      "Ê",
+                      "E"
+                  )
+                  .replace(
+                      "Í",
+                      "I"
+                  )
+                  .replace(
+                      "Ó",
+                      "O"
+                  )
+                  .replace(
+                      "Ô",
+                      "O"
+                  )
+                  .replace(
+                      "Õ",
+                      "O"
+                  )
+                  .replace(
+                      "Ú",
+                      "U"
+                  )
+                  .replace(
+                      "Ç",
+                      "C"
+                  )
               )
-
 
               nome = re.sub(
                   r"[^A-Z0-9]+",
@@ -264,59 +353,84 @@ jobs:
                   nome
               )
 
-
               return nome.strip("_")
 
 
           # ==========================================
-          # TRANSFORMAR REGISTRO
+          # MAPEAR COLUNAS
           # ==========================================
 
-          def transformar(registro):
+          mapa = {}
 
-              campos = {
-                  normalizar_nome(
+          for coluna in colunas:
+
+              mapa[
+                  nome_campo(
+                      coluna
+                  )
+              ] = coluna
+
+
+          def obter(
+              registro,
+              *nomes
+          ):
+
+              for nome in nomes:
+
+                  chave = nome_campo(
+                      nome
+                  )
+
+                  coluna = mapa.get(
                       chave
-                  ): valor
-                  for chave, valor
-                  in registro.items()
-              }
+                  )
 
+                  if coluna is not None:
 
-              def pegar(*nomes):
-
-                  for nome in nomes:
-
-                      chave = normalizar_nome(
-                          nome
+                      valor = normalizar(
+                          registro.get(
+                              coluna,
+                              ""
+                          )
                       )
 
-                      if chave in campos:
+                      if valor:
 
-                          valor = campos[
-                              chave
-                          ]
+                          return valor
 
-                          if valor:
-
-                              return valor.strip()
+              return ""
 
 
-                  return ""
+          # ==========================================
+          # CONVERTER REGISTROS
+          # ==========================================
+
+          nova_base = []
+
+          icaos = set()
+
+          duplicados = 0
+
+          sem_icao = 0
 
 
-              icao = pegar(
-                  "CÓDIGO OACI",
-                  "CODIGO OACI",
+          for registro in registros:
+
+              icao = obter(
+                  registro,
                   "ICAO",
-                  "OACI"
+                  "OACI",
+                  "Código OACI",
+                  "Codigo OACI",
+                  "CÓDIGO OACI"
               )
 
 
               icao = (
                   icao
-                  .strip()
                   .upper()
+                  .strip()
               )
 
 
@@ -325,205 +439,9 @@ jobs:
                   icao
               ):
 
-                  return None
-
-
-              elevacao = pegar(
-                  "ALTITUDE",
-                  "ELEVAÇÃO",
-                  "ELEVACAO"
-              )
-
-
-              try:
-
-                  if elevacao:
-
-                      elevacao = float(
-                          elevacao.replace(
-                              ",",
-                              "."
-                          )
-                      )
-
-              except Exception:
-
-                  elevacao = None
-
-
-              return {
-
-                  "icao":
-                  icao,
-
-                  "ciad":
-                  pegar(
-                      "CIAD"
-                  ),
-
-                  "nome":
-                  pegar(
-                      "NOME"
-                  ),
-
-                  "municipio":
-                  pegar(
-                      "MUNICÍPIO",
-                      "MUNICIPIO"
-                  ),
-
-                  "uf":
-                  pegar(
-                      "UF"
-                  ),
-
-                  "municipio_servido":
-                  pegar(
-                      "MUNICÍPIO SERVIDO",
-                      "MUNICIPIO SERVIDO"
-                  ),
-
-                  "uf_servido":
-                  pegar(
-                      "UF SERVIDO"
-                  ),
-
-                  "latitude":
-                  pegar(
-                      "LATITUDE"
-                  ),
-
-                  "longitude":
-                  pegar(
-                      "LONGITUDE"
-                  ),
-
-                  "elevacao":
-                  elevacao,
-
-                  "operacao_diurna":
-                  pegar(
-                      "OPERAÇÃO DIURNA",
-                      "OPERACAO DIURNA"
-                  ),
-
-                  "operacao_noturna":
-                  pegar(
-                      "OPERAÇÃO NOTURNA",
-                      "OPERACAO NOTURNA"
-                  ),
-
-                  "pistas":
-                  [],
-
-                  "frequencias":
-                  [],
-
-                  "distancias_declaradas":
-                  []
-
-              }
-
-
-          # ==========================================
-          # PÚBLICOS
-          # ==========================================
-
-          print()
-          print("========================================")
-          print("AERÓDROMOS PÚBLICOS")
-          print("========================================")
-
-
-          dados_publicos = baixar(
-              URL_PUBLICOS
-          )
-
-
-          publicos = ler_csv(
-              dados_publicos
-          )
-
-
-          print(
-              "Registros públicos:",
-              len(publicos)
-          )
-
-
-          # ==========================================
-          # PRIVADOS
-          # ==========================================
-
-          print()
-          print("========================================")
-          print("AERÓDROMOS PRIVADOS")
-          print("========================================")
-
-
-          dados_privados = baixar(
-              URL_PRIVADOS
-          )
-
-
-          privados = ler_csv(
-              dados_privados
-          )
-
-
-          print(
-              "Registros privados:",
-              len(privados)
-          )
-
-
-          # ==========================================
-          # COMBINAR
-          # ==========================================
-
-          print()
-          print("========================================")
-          print("COMBINANDO BASES")
-          print("========================================")
-
-
-          todos = []
-
-          todos.extend(
-              publicos
-          )
-
-          todos.extend(
-              privados
-          )
-
-
-          nova_base = []
-
-          icaos = set()
-
-          duplicados = 0
-
-          invalidos = 0
-
-
-          for registro in todos:
-
-              aeroporto = transformar(
-                  registro
-              )
-
-
-              if aeroporto is None:
-
-                  invalidos += 1
+                  sem_icao += 1
 
                   continue
-
-
-              icao = aeroporto[
-                  "icao"
-              ]
 
 
               if icao in icaos:
@@ -538,64 +456,185 @@ jobs:
               )
 
 
+              nome = obter(
+                  registro,
+                  "Nome",
+                  "Nome do Aeródromo",
+                  "Nome Aeródromo"
+              )
+
+
+              municipio = obter(
+                  registro,
+                  "Município",
+                  "Municipio"
+              )
+
+
+              uf = obter(
+                  registro,
+                  "UF"
+              )
+
+
+              ciad = obter(
+                  registro,
+                  "CIAD"
+              )
+
+
+              latitude = obter(
+                  registro,
+                  "Latitude",
+                  "LATITUDE"
+              )
+
+
+              longitude = obter(
+                  registro,
+                  "Longitude",
+                  "LONGITUDE"
+              )
+
+
+              altitude = obter(
+                  registro,
+                  "Altitude",
+                  "Elevação",
+                  "Elevacao"
+              )
+
+
+              # ======================================
+              # CONVERTER ALTITUDE
+              # ======================================
+
+              altitude_valor = None
+
+              if altitude:
+
+                  try:
+
+                      altitude_valor = float(
+                          altitude
+                          .replace(
+                              ",",
+                              "."
+                          )
+                          .replace(
+                              "m",
+                              ""
+                          )
+                          .strip()
+                      )
+
+                  except Exception:
+
+                      altitude_valor = None
+
+
+              aeroporto = {
+
+                  "icao":
+                  icao,
+
+                  "ciad":
+                  ciad,
+
+                  "nome":
+                  nome,
+
+                  "municipio":
+                  municipio,
+
+                  "uf":
+                  uf,
+
+                  "latitude":
+                  latitude,
+
+                  "longitude":
+                  longitude,
+
+                  "elevacao":
+                  altitude_valor,
+
+                  "pistas":
+                  [],
+
+                  "frequencias":
+                  [],
+
+                  "distancias_declaradas":
+                  []
+
+              }
+
+
               nova_base.append(
                   aeroporto
               )
 
 
-          print(
-              "Total bruto:",
-              len(todos)
-          )
+          # ==========================================
+          # RESULTADO DA CONVERSÃO
+          # ==========================================
 
+          print("========================================")
+          print("RESULTADO")
+          print("========================================")
+          print()
+
+          print(
+              "Registros brutos:",
+              len(registros)
+          )
 
           print(
               "ICAOs válidos:",
               len(nova_base)
           )
 
-
           print(
               "Duplicados:",
               duplicados
           )
 
-
           print(
-              "Inválidos:",
-              invalidos
+              "Sem ICAO:",
+              sem_icao
           )
+
+          print()
 
 
           # ==========================================
           # PROTEÇÃO
           # ==========================================
 
-          if len(nova_base) < MINIMO:
+          if len(nova_base) < MINIMO_REGISTROS:
 
               raise Exception(
-                  "ERRO CRÍTICO: a ANAC retornou "
+                  "ERRO CRÍTICO: somente "
                   + str(len(nova_base))
-                  + " registros. "
-                  "Mínimo esperado: "
-                  + str(MINIMO)
-                  + ". "
-                  "Arquivo atual preservado."
+                  + " aeródromos válidos. "
+                  "Base atual preservada."
               )
 
 
           # ==========================================
-          # SBUR
+          # PROCURAR SBUR
           # ==========================================
 
-          sbur = next(
-              (
-                  x
-                  for x in nova_base
-                  if x["icao"] == "SBUR"
-              ),
-              None
-          )
+          sbur = None
+
+          for aeroporto in nova_base:
+
+              if aeroporto["icao"] == "SBUR":
+
+                  sbur = aeroporto
+
+                  break
 
 
           if sbur is None:
@@ -605,8 +644,10 @@ jobs:
               )
 
 
-          print()
-          print("SBUR encontrado:")
+          print(
+              "SBUR encontrado:"
+          )
+
           print(
               json.dumps(
                   sbur,
@@ -615,12 +656,14 @@ jobs:
               )
           )
 
+          print()
+
 
           # ==========================================
-          # PRESERVAR AISWEB
+          # PRESERVAR DADOS AISWEB
           # ==========================================
 
-          anterior = {}
+          dados_antigos = {}
 
 
           if ARQUIVO.exists():
@@ -633,17 +676,17 @@ jobs:
                       encoding="utf-8"
                   ) as arquivo:
 
-                      dados_anteriores = json.load(
+                      antigo = json.load(
                           arquivo
                       )
 
 
                   if isinstance(
-                      dados_anteriores,
+                      antigo,
                       list
                   ):
 
-                      for item in dados_anteriores:
+                      for item in antigo:
 
                           if not isinstance(
                               item,
@@ -653,17 +696,17 @@ jobs:
                               continue
 
 
-                          codigo = str(
+                          codigo = normalizar(
                               item.get(
                                   "icao",
                                   ""
                               )
-                          ).strip().upper()
+                          ).upper()
 
 
                           if codigo:
 
-                              anterior[
+                              dados_antigos[
                                   codigo
                               ] = item
 
@@ -671,7 +714,7 @@ jobs:
               except Exception as erro:
 
                   print(
-                      "Aviso:",
+                      "Aviso ao ler base anterior:",
                       erro
                   )
 
@@ -686,12 +729,12 @@ jobs:
               ]
 
 
-              antigo = anterior.get(
+              anterior = dados_antigos.get(
                   codigo
               )
 
 
-              if antigo is None:
+              if anterior is None:
 
                   continue
 
@@ -702,7 +745,7 @@ jobs:
                   "distancias_declaradas"
               ):
 
-                  valor = antigo.get(
+                  valor = anterior.get(
                       campo
                   )
 
@@ -730,38 +773,25 @@ jobs:
                   preservados += 1
 
 
-          print()
           print(
-              "Registros com dados AISWEB "
-              "preservados:",
+              "Dados AISWEB preservados:",
               preservados
           )
 
-
-          # ==========================================
-          # VALIDAR NOVA BASE
-          # ==========================================
-
-          if len(nova_base) < MINIMO:
-
-              raise Exception(
-                  "A base final ficou abaixo "
-                  "do mínimo permitido."
-              )
-
-
-          # ==========================================
-          # SALVAR TEMPORÁRIO
-          # ==========================================
-
           print()
+
+
+          # ==========================================
+          # GRAVAR TEMPORÁRIO
+          # ==========================================
+
           print(
-              "Gerando arquivo temporário..."
+              "Gravando arquivo temporário..."
           )
 
 
           with open(
-              ARQUIVO_TMP,
+              TEMPORARIO,
               "w",
               encoding="utf-8"
           ) as arquivo:
@@ -779,11 +809,11 @@ jobs:
 
 
           # ==========================================
-          # TESTAR JSON
+          # VALIDAR JSON
           # ==========================================
 
           with open(
-              ARQUIVO_TMP,
+              TEMPORARIO,
               "r",
               encoding="utf-8"
           ) as arquivo:
@@ -803,35 +833,36 @@ jobs:
               )
 
 
-          if len(teste) < MINIMO:
+          if len(teste) < MINIMO_REGISTROS:
 
               raise Exception(
-                  "JSON final possui menos "
-                  "de 7.000 registros."
+                  "JSON final possui somente "
+                  + str(len(teste))
+                  + " registros."
               )
 
 
           # ==========================================
-          # SUBSTITUIR
+          # SUBSTITUIR BASE
           # ==========================================
 
-          ARQUIVO_TMP.replace(
+          TEMPORARIO.replace(
               ARQUIVO
           )
 
 
           # ==========================================
-          # RESULTADO
+          # FINAL
           # ==========================================
 
           print()
           print("========================================")
-          print("✓ BASE RECONSTRUÍDA")
+          print("✓ BASE ATUALIZADA")
           print("========================================")
           print()
 
           print(
-              "Total de aeródromos:",
+              "Aeródromos:",
               len(nova_base)
           )
 
@@ -846,9 +877,7 @@ jobs:
           )
 
           print()
-          print(
-              "A base está pronta para o LeoSpotter."
-          )
+
 
           PY
 
@@ -865,13 +894,13 @@ jobs:
 
             echo "alterado=false" >> "$GITHUB_OUTPUT"
 
-            echo "Nenhuma alteração."
+            echo "Nenhuma alteração na base."
 
           else
 
             echo "alterado=true" >> "$GITHUB_OUTPUT"
 
-            echo "Base alterada."
+            echo "A base foi alterada."
 
             git diff --stat -- data/aeroportos.json
 
@@ -879,7 +908,7 @@ jobs:
 
 
       # ==========================================
-      # COMMIT
+      # COMMIT E PUSH
       # ==========================================
 
       - name: Commit e push
@@ -895,7 +924,7 @@ jobs:
           git add data/aeroportos.json
 
           git commit \
-            -m "Reconstruir base de aeroportos"
+            -m "Atualizar base de aeroportos ANAC"
 
           git push
 
