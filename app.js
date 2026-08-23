@@ -2693,3 +2693,84 @@ atualizarEstatisticasFotos();
 carregarAeronaves();
 
 carregarAerodromos();
+
+// ==========================================
+// PREENCHER PREVISÕES DE PESQUISA
+// ==========================================
+
+function atualizarPrevisoesPesquisa() {
+
+    // ------------------------------------------
+    // PREVISÕES DE AERONAVES
+    // ------------------------------------------
+
+    const listaAeronaves = document.getElementById("listaAeronaves");
+
+    if (listaAeronaves) {
+
+        listaAeronaves.innerHTML = "";
+
+        aeronaves.forEach(function(aeronave) {
+
+            if (!aeronave.matricula) {
+                return;
+            }
+
+            const option = document.createElement("option");
+
+            option.value = aeronave.matricula;
+
+            if (aeronave.modelo) {
+                option.label = aeronave.modelo;
+            }
+
+            listaAeronaves.appendChild(option);
+
+        });
+    }
+
+
+    // ------------------------------------------
+    // PREVISÕES DE AERÓDROMOS
+    // ------------------------------------------
+
+    const listaAerodromos = document.getElementById("listaAerodromos");
+
+    if (listaAerodromos) {
+
+        listaAerodromos.innerHTML = "";
+
+        aerodromos.forEach(function(aero) {
+
+            if (!aero.icao) {
+                return;
+            }
+
+            const option = document.createElement("option");
+
+            option.value = aero.icao;
+
+            // Mostra informações úteis na previsão
+            const nome = aero.nome || "";
+            const cidade = aero.municipio || aero.cidade || "";
+
+            if (nome && cidade) {
+
+                option.label = `${nome} - ${cidade}`;
+
+            } else if (nome) {
+
+                option.label = nome;
+
+            } else if (cidade) {
+
+                option.label = cidade;
+
+            }
+
+            listaAerodromos.appendChild(option);
+
+        });
+    }
+
+}
