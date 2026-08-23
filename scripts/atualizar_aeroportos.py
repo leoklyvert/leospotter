@@ -9,10 +9,6 @@ from html import unescape
 from pathlib import Path
 
 
-# ============================================================
-# CONFIGURAÇÃO
-# ============================================================
-
 BASE = Path("data/aeroportos.json")
 CURSOR = Path("data/aeroportos_cursor.json")
 
@@ -20,6 +16,8 @@ SIROS = (
     "https://siros.anac.gov.br/"
     "siros/registros/aerodromo/aerodromos.csv"
 )
+
+AISWEB = "https://aisweb.decea.mil.br/?codigo={}&i=aerodromos"
 
 LIMITE = 100
 INTERVALO = 0.5
@@ -30,17 +28,23 @@ PRIORITARIOS = [
 ]
 
 
-# ============================================================
+# ==========================================================
 # DOWNLOAD
-# ============================================================
+# ==========================================================
 
 def baixar(url):
 
     requisicao = urllib.request.Request(
         url,
         headers={
-            "User-Agent": "Mozilla/5.0"
-        }
+            "User-Agent": (
+                "Mozilla/5.0 "
+                "(Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 "
+                "(KHTML, like Gecko) "
+                "Chrome/120 Safari/537.36"
+            )
+        },
     )
 
     with urllib.request.urlopen(
@@ -48,15 +52,12 @@ def baixar(url):
         timeout=60
     ) as resposta:
 
-        return (
-            resposta.status,
-            resposta.read()
-        )
+        return resposta.status, resposta.read()
 
 
-# ============================================================
-# FUNÇÕES AUXILIARES
-# ============================================================
+# ==========================================================
+# UTILITÁRIOS
+# ==========================================================
 
 def limpar(valor):
 
@@ -76,26 +77,12 @@ def campo(registro, *nomes):
             )
 
             if valor:
-
                 return valor
 
     return ""
 
 
-# ============================================================
-# CONSULTA AISWEB
-# ============================================================
-
-def consultar_aisweb(icao):
-
-    url = (
-        "https://aisweb.decea.mil.br/"
-        "?codigo="
-        + icao
-        + "&i=aerodromos"
-    )
-
-    status, conteudo = baixar(url)
+def limpar_html(conteudo):
 
     texto = conteudo.decode(
         "utf-8",
@@ -138,9 +125,20 @@ def consultar_aisweb(icao):
         texto
     )
 
+    texto = texto.replace(
+        "\xa0",
+        " "
+    )
+
     texto = re.sub(
         r"[ \t]+",
         " ",
+        texto
+    )
+
+    texto = re.sub(
+        r"\n[ \t]+",
+        "\n",
         texto
     )
 
@@ -150,244 +148,394 @@ def consultar_aisweb(icao):
         texto
     )
 
-    texto = texto.strip()
+    return texto.strip()
 
-    texto_upper = texto.upper()
 
-    resultado = {
+def obter_linhas(texto):
 
-        "pistas": [],
+    resultado = []
 
-        "frequencias": [],
+    for linha in texto.splitlines():
 
-        "distancias_declaradas": [],
+        linha = limpar(linha)
 
-        "atualizacao": None
+        if linha:
 
-    }
+            resultado.append(linha)
 
-    # ========================================================
-    # PISTAS
-    # ========================================================
+    return resultado
 
-    padrao_pista = re.search(
 
-        r"(\d{2})\s*-\s*.*?"
-        r"\(\s*"
-        r"(\d+)\s*[xX]\s*(\d+)"
-        r"\s+([A-Z0-9]+)"
-        r"\s+([0-9]+/[A-Z0-9/]+)"
-        r".*?"
-        r"-\s*(\d{2})",
+def numero_inteiro(valor):
 
-        texto_upper,
+    valor = limpar(valor)
 
-        re.S
-
+    valor = valor.replace(
+        ".",
+        ""
     )
 
-    if padrao_pista:
-
-        resultado["pistas"].append({
-
-            "identificacao":
-                padrao_pista.group(1)
-                + "/"
-                + padrao_pista.group(6),
-
-            "piso":
-                padrao_pista.group(4),
-
-            "dimensoes":
-                padrao_pista.group(2)
-                + " x "
-                + padrao_pista.group(3)
-                + " m",
-
-            "resistencia":
-                padrao_pista.group(5)
-
-        })
-
-    # ========================================================
-    # FREQUÊNCIAS
-    # ========================================================
-
-    frequencias = re.findall(
-
-        r"(?:COM\s*-\s*)?"
-        r"([A-ZÀ-Ú0-9 /-]{2,40})"
-        r"\s+\[\d+\]"
-        r"(?:\s+\[\d+\])*"
-        r"\s+"
-        r"(\d{3}\.\d{3})",
-
-        texto_upper
-
+    valor = valor.replace(
+        ",",
+        ""
     )
 
-    for orgao, valor in frequencias:
+    if re.fullmatch(
+        r"-?\d+",
+        valor
+    ):
 
-        orgao = orgao.strip()
+        return int(valor)
 
-        existe = any(
+    return None
 
-            frequencia["orgao"] == orgao
-            and
-            frequencia["valor"] == valor
 
-            for frequencia
-            in resultado["frequencias"]
+# ==========================================================
+# PISTAS / CABECEIRAS
+# ==========================================================
 
-        )
+def extrair_pistas(linhas_texto):
 
-        if not existe:
+    resultado = []
 
-            resultado["frequencias"].append({
+    inicio = None
 
-                "orgao":
-                    orgao,
+    for i, linha in enumerate(linhas_texto):
 
-                "valor":
-                    valor,
+        if (
+            "DISTÂNCIA(S) DECLARADA(S)"
+            in linha.upper()
+        ):
 
-                "observacao":
-                    ""
+            inicio = i
 
-            })
+            break
 
-    # ========================================================
-    # DISTÂNCIAS DECLARADAS
-    # ========================================================
+    if inicio is None:
 
-    encontrados = re.findall(
+        return resultado
 
-        r"(\d{2})\s+"
-        r"(\d{3,5})\s+"
-        r"(\d{3,5})\s+"
-        r"(\d{3,5})\s+"
-        r"(\d{3,5})",
+    i = inicio + 1
 
-        texto
+    while i < len(linhas_texto):
 
-    )
+        linha = linhas_texto[i]
 
-    vistos = set()
+        upper = linha.upper()
 
-    for valores in encontrados:
+        if upper.startswith("COMPL"):
 
-        if valores in vistos:
+            break
+
+        if upper in (
+            "RWY",
+            "TORA(M)",
+            "TODA(M)",
+            "ASDA(M)",
+            "LDA(M)",
+            "ALT. GEOIDAL(M)",
+            "COORDENADAS",
+        ):
+
+            i += 1
 
             continue
 
-        vistos.add(valores)
+        # --------------------------------------------------
+        # IDENTIFICAÇÃO DA CABECEIRA
+        # --------------------------------------------------
 
-        (
-            rwy,
-            tora,
-            toda,
-            asda,
-            lda
-        ) = valores
+        if re.fullmatch(
+            r"\d{2}",
+            linha
+        ):
 
-        resultado[
-            "distancias_declaradas"
-        ].append({
+            rwy = linha
 
-            "rwy":
-                rwy,
+            valores = []
 
-            "tora":
-                int(tora),
+            j = i + 1
 
-            "toda":
-                int(toda),
+            # --------------------------------------------------
+            # TORA / TODA / ASDA / LDA / ALT GEOIDAL
+            # --------------------------------------------------
 
-            "asda":
-                int(asda),
+            while (
+                j < len(linhas_texto)
+                and len(valores) < 5
+            ):
 
-            "lda":
-                int(lda)
+                candidato = linhas_texto[j]
 
-        })
+                if re.fullmatch(
+                    r"-?\d+(?:[.,]\d+)?",
+                    candidato
+                ):
 
-    # ========================================================
-    # DATA AISWEB
-    # ========================================================
+                    valores.append(
+                        candidato
+                    )
 
-    padrao_data = re.search(
+                    j += 1
+
+                    continue
+
+                break
+
+            # --------------------------------------------------
+            # COORDENADAS
+            # --------------------------------------------------
+
+            if (
+                len(valores) == 5
+                and j < len(linhas_texto)
+            ):
+
+                coordenada = linhas_texto[j]
+
+                padrao_coordenada = (
+                    r"^[NS]\s+"
+                    r"\d{1,2}\s+"
+                    r"\d{1,2}\s+"
+                    r"\d+(?:\.\d+)?\s+"
+                    r"[EW]\s+"
+                    r"\d{1,3}\s+"
+                    r"\d{1,2}\s+"
+                    r"\d+(?:\.\d+)?$"
+                )
+
+                if re.match(
+                    padrao_coordenada,
+                    coordenada,
+                    flags=re.I
+                ):
+
+                    tora = numero_inteiro(
+                        valores[0]
+                    )
+
+                    toda = numero_inteiro(
+                        valores[1]
+                    )
+
+                    asda = numero_inteiro(
+                        valores[2]
+                    )
+
+                    lda = numero_inteiro(
+                        valores[3]
+                    )
+
+                    try:
+
+                        altitude = float(
+                            valores[4].replace(
+                                ",",
+                                "."
+                            )
+                        )
+
+                    except ValueError:
+
+                        altitude = None
+
+                    item = {
+
+                        "identificacao":
+                            rwy,
+
+                        "tora":
+                            tora,
+
+                        "toda":
+                            toda,
+
+                        "asda":
+                            asda,
+
+                        "lda":
+                            lda,
+
+                        "altitude_geoidal":
+                            altitude,
+
+                        "coordenadas":
+                            coordenada,
+
+                    }
+
+                    if item not in resultado:
+
+                        resultado.append(
+                            item
+                        )
+
+                    i = j + 1
+
+                    continue
+
+        i += 1
+
+    return resultado
+
+
+# ==========================================================
+# FREQUÊNCIAS
+# ==========================================================
+
+def extrair_frequencias(linhas_texto):
+
+    resultado = []
+
+    padrao = re.compile(
+
+        r"^(?:COM\s*-\s*)?"
+        r"(.+?)\s+\[\d+\]"
+        r"(?:\s+\[\d+\])*"
+        r"\s+"
+        r"(\d{3}\.\d{3})$",
+
+        re.I
+    )
+
+    for linha in linhas_texto:
+
+        correspondencia = padrao.search(
+            linha
+        )
+
+        if not correspondencia:
+
+            continue
+
+        orgao = limpar(
+            correspondencia.group(1)
+        )
+
+        valor = correspondencia.group(2)
+
+        if len(orgao) > 60:
+
+            continue
+
+        item = {
+
+            "orgao":
+                orgao,
+
+            "valor":
+                valor,
+
+            "observacao":
+                "",
+
+        }
+
+        if item not in resultado:
+
+            resultado.append(
+                item
+            )
+
+    return resultado
+
+
+# ==========================================================
+# DATA AISWEB
+# ==========================================================
+
+def extrair_atualizacao(texto):
+
+    correspondencia = re.search(
 
         r"ÚLTIMA ATUALIZAÇÃO"
         r"\s*:?\s*"
         r"(\d{2}/\d{2}/\d{4})",
 
-        texto_upper
-
+        texto.upper()
     )
 
-    if padrao_data:
+    if correspondencia:
 
-        resultado["atualizacao"] = (
-            padrao_data.group(1)
-        )
+        return correspondencia.group(1)
 
-    # ========================================================
-    # VALIDAÇÃO
-    # ========================================================
+    return None
 
-    if not resultado["pistas"]:
+
+# ==========================================================
+# CONSULTA AISWEB
+# ==========================================================
+
+def consultar_aisweb(icao):
+
+    url = AISWEB.format(
+        icao
+    )
+
+    status, conteudo = baixar(
+        url
+    )
+
+    texto = limpar_html(
+        conteudo
+    )
+
+    lista = obter_linhas(
+        texto
+    )
+
+    pistas = extrair_pistas(
+        lista
+    )
+
+    frequencias = extrair_frequencias(
+        lista
+    )
+
+    atualizacao = extrair_atualizacao(
+        texto
+    )
+
+    if not pistas:
 
         raise RuntimeError(
-            "Nenhuma pista encontrada."
+            "Nenhuma pista/cabeceira encontrada no AISWEB."
         )
 
-    if not resultado["frequencias"]:
+    if not frequencias:
 
         raise RuntimeError(
-            "Nenhuma frequência encontrada."
+            "Nenhuma frequência encontrada no AISWEB."
         )
 
     print(
         "  HTTP:",
         status,
         "| pistas:",
-        len(resultado["pistas"]),
+        len(pistas),
         "| frequências:",
-        len(resultado["frequencias"]),
-        "| distâncias:",
-        len(resultado["distancias_declaradas"])
+        len(frequencias)
     )
 
-    return resultado
+    return {
+
+        "pistas":
+            pistas,
+
+        "frequencias":
+            frequencias,
+
+        "atualizacao":
+            atualizacao,
+
+    }
 
 
-# ============================================================
-# MAIN
-# ============================================================
+# ==========================================================
+# CARREGAR BASE
+# ==========================================================
 
-def main():
-
-    print(
-        "========================================"
-    )
-
-    print(
-        "LEOSPOTTER"
-    )
-
-    print(
-        "ATUALIZAÇÃO DA BASE DE AERÓDROMOS"
-    )
-
-    print(
-        "========================================"
-    )
-
-    print()
-
-    # ========================================================
-    # CARREGAR BASE
-    # ========================================================
+def carregar_base():
 
     if not BASE.exists():
 
@@ -424,38 +572,17 @@ def main():
 
         )
 
-    print(
-        "Base inicial:",
-        len(aeroportos),
-        "aeródromos"
-    )
+    return aeroportos
 
-    print()
 
-    # ========================================================
-    # ÍNDICE
-    # ========================================================
+# ==========================================================
+# ATUALIZAR ANAC
+# ==========================================================
 
-    indice = {}
-
-    for aeroporto in aeroportos:
-
-        icao = limpar(
-            aeroporto.get("icao")
-        ).upper()
-
-        if re.fullmatch(
-            r"[A-Z0-9]{4}",
-            icao
-        ):
-
-            aeroporto["icao"] = icao
-
-            indice[icao] = aeroporto
-
-    # ========================================================
-    # SIROS / ANAC
-    # ========================================================
+def atualizar_anac(
+    aeroportos,
+    indice
+):
 
     print(
         "========================================"
@@ -480,7 +607,9 @@ def main():
 
     registros = list(
         csv.DictReader(
-            io.StringIO(texto_csv),
+            io.StringIO(
+                texto_csv
+            ),
             delimiter=";"
         )
     )
@@ -499,6 +628,38 @@ def main():
 
     novos = 0
 
+    campos = {
+
+        "nome": (
+            "NOME AERÓDROMO",
+        ),
+
+        "iata": (
+            "SIGLA IATA AERÓDROMO",
+        ),
+
+        "municipio": (
+            "MUNICÍPIO AERÓDROMO",
+        ),
+
+        "uf": (
+            "ESTADO AERÓDROMO",
+        ),
+
+        "pais": (
+            "PAÍS AERÓDROMO",
+        ),
+
+        "latitude": (
+            "LATITUDE",
+        ),
+
+        "longitude": (
+            "LONGITUDE",
+        ),
+
+    }
+
     for registro in registros:
 
         icao = campo(
@@ -509,7 +670,7 @@ def main():
 
             "ICAO",
 
-            "ICAO AERÓDROMO"
+            "ICAO AERÓDROMO",
 
         ).upper()
 
@@ -541,7 +702,7 @@ def main():
                     [],
 
                 "ultima_atualizacao_aisweb":
-                    None
+                    None,
 
             }
 
@@ -552,38 +713,6 @@ def main():
             indice[icao] = aeroporto
 
             novos += 1
-
-        campos = {
-
-            "nome": (
-                "NOME AERÓDROMO",
-            ),
-
-            "iata": (
-                "SIGLA IATA AERÓDROMO",
-            ),
-
-            "municipio": (
-                "MUNICÍPIO AERÓDROMO",
-            ),
-
-            "uf": (
-                "ESTADO AERÓDROMO",
-            ),
-
-            "pais": (
-                "PAÍS AERÓDROMO",
-            ),
-
-            "latitude": (
-                "LATITUDE",
-            ),
-
-            "longitude": (
-                "LONGITUDE",
-            )
-
-        }
 
         for chave, nomes in campos.items():
 
@@ -608,36 +737,41 @@ def main():
 
     print()
 
-    # ========================================================
-    # CURSOR
-    # ========================================================
 
-    cursor = 0
+# ==========================================================
+# CURSOR
+# ==========================================================
 
-    if CURSOR.exists():
+def obter_cursor():
 
-        try:
+    if not CURSOR.exists():
 
-            dados_cursor = json.loads(
+        return 0
 
-                CURSOR.read_text(
-                    encoding="utf-8"
-                )
+    try:
 
+        dados = json.loads(
+            CURSOR.read_text(
+                encoding="utf-8"
             )
+        )
 
-            cursor = int(
-
-                dados_cursor.get(
-                    "cursor",
-                    0
-                )
-
+        return int(
+            dados.get(
+                "cursor",
+                0
             )
+        )
 
-        except Exception:
+    except Exception:
 
-            cursor = 0
+        return 0
+
+
+def montar_lote(
+    indice,
+    cursor
+):
 
     icaos = sorted(
         indice.keys()
@@ -665,8 +799,9 @@ def main():
 
     if normais:
 
-        inicio = cursor % len(
-            normais
+        inicio = (
+            cursor
+            % len(normais)
         )
 
     else:
@@ -684,37 +819,175 @@ def main():
     )
 
     lote_normal = normais[
-
         inicio:
         inicio + quantidade_normal
-
     ]
 
     lote = (
-
         prioritarios
         +
         lote_normal
-
     )
 
-    proximo_cursor = (
-
+    proximo = (
         inicio
         +
         len(lote_normal)
-
     )
 
     if normais:
 
-        proximo_cursor %= len(
+        proximo %= len(
             normais
         )
 
-    # ========================================================
-    # AISWEB
-    # ========================================================
+    return (
+        icaos,
+        lote,
+        proximo,
+        inicio
+    )
+
+
+# ==========================================================
+# SALVAR
+# ==========================================================
+
+def salvar_json(
+    aeroportos
+):
+
+    BASE.write_text(
+
+        json.dumps(
+            aeroportos,
+            ensure_ascii=False,
+            indent=2
+        )
+        + "\n",
+
+        encoding="utf-8"
+
+    )
+
+
+def salvar_cursor(
+    cursor,
+    total
+):
+
+    CURSOR.write_text(
+
+        json.dumps(
+
+            {
+
+                "cursor":
+                    cursor,
+
+                "total_icaos":
+                    total,
+
+                "ultima_execucao":
+                    datetime.now(
+                        timezone.utc
+                    ).isoformat(),
+
+            },
+
+            ensure_ascii=False,
+
+            indent=2
+
+        )
+        + "\n",
+
+        encoding="utf-8"
+
+    )
+
+
+# ==========================================================
+# MAIN
+# ==========================================================
+
+def main():
+
+    print(
+        "========================================"
+    )
+
+    print(
+        "LEOSPOTTER"
+    )
+
+    print(
+        "ATUALIZAÇÃO DA BASE DE AERÓDROMOS"
+    )
+
+    print(
+        "========================================"
+    )
+
+    print()
+
+    aeroportos = carregar_base()
+
+    print(
+        "Base inicial:",
+        len(aeroportos),
+        "aeródromos"
+    )
+
+    print()
+
+    # ------------------------------------------------------
+    # ÍNDICE
+    # ------------------------------------------------------
+
+    indice = {}
+
+    for aeroporto in aeroportos:
+
+        icao = limpar(
+            aeroporto.get(
+                "icao"
+            )
+        ).upper()
+
+        if re.fullmatch(
+            r"[A-Z0-9]{4}",
+            icao
+        ):
+
+            aeroporto["icao"] = icao
+
+            indice[icao] = aeroporto
+
+    # ------------------------------------------------------
+    # ANAC
+    # ------------------------------------------------------
+
+    atualizar_anac(
+        aeroportos,
+        indice
+    )
+
+    # ------------------------------------------------------
+    # CURSOR
+    # ------------------------------------------------------
+
+    cursor = obter_cursor()
+
+    (
+        icaos,
+        lote,
+        proximo_cursor,
+        inicio
+    ) = montar_lote(
+        indice,
+        cursor
+    )
 
     print(
         "========================================"
@@ -750,8 +1023,11 @@ def main():
 
     print()
 
-    sucesso = 0
+    # ------------------------------------------------------
+    # CONSULTAS
+    # ------------------------------------------------------
 
+    sucesso = 0
     erros = 0
 
     for numero, icao in enumerate(
@@ -773,11 +1049,19 @@ def main():
                 icao
             ]
 
+            # --------------------------------------------------
+            # PISTAS
+            # --------------------------------------------------
+
             aeroporto[
                 "pistas"
             ] = dados[
                 "pistas"
             ]
+
+            # --------------------------------------------------
+            # FREQUÊNCIAS
+            # --------------------------------------------------
 
             aeroporto[
                 "frequencias"
@@ -785,11 +1069,71 @@ def main():
                 "frequencias"
             ]
 
+            # --------------------------------------------------
+            # COMPATIBILIDADE COM CAMPO ANTIGO
+            # --------------------------------------------------
+
             aeroporto[
                 "distancias_declaradas"
-            ] = dados[
-                "distancias_declaradas"
-            ]
+            ] = []
+
+            for pista in dados[
+                "pistas"
+            ]:
+
+                if all(
+
+                    pista.get(
+                        chave
+                    ) is not None
+
+                    for chave in (
+                        "tora",
+                        "toda",
+                        "asda",
+                        "lda"
+                    )
+
+                ):
+
+                    aeroporto[
+                        "distancias_declaradas"
+                    ].append(
+
+                        {
+
+                            "rwy":
+                                pista[
+                                    "identificacao"
+                                ],
+
+                            "tora":
+                                pista[
+                                    "tora"
+                                ],
+
+                            "toda":
+                                pista[
+                                    "toda"
+                                ],
+
+                            "asda":
+                                pista[
+                                    "asda"
+                                ],
+
+                            "lda":
+                                pista[
+                                    "lda"
+                                ],
+
+                        }
+
+                    )
+
+            # --------------------------------------------------
+            # DATA
+            # --------------------------------------------------
 
             aeroporto[
                 "ultima_atualizacao_aisweb"
@@ -832,14 +1176,13 @@ def main():
             INTERVALO
         )
 
-    # ========================================================
+    # ------------------------------------------------------
     # ORDENAR
-    # ========================================================
+    # ------------------------------------------------------
 
     aeroportos.sort(
 
         key=lambda aeroporto:
-
         limpar(
             aeroporto.get(
                 "icao",
@@ -849,64 +1192,9 @@ def main():
 
     )
 
-    # ========================================================
-    # SALVAR BASE
-    # ========================================================
-
-    BASE.write_text(
-
-        json.dumps(
-
-            aeroportos,
-
-            ensure_ascii=False,
-
-            indent=2
-
-        )
-        + "\n",
-
-        encoding="utf-8"
-
-    )
-
-    # ========================================================
-    # SALVAR CURSOR
-    # ========================================================
-
-    CURSOR.write_text(
-
-        json.dumps(
-
-            {
-
-                "cursor":
-                    proximo_cursor,
-
-                "total_icaos":
-                    len(icaos),
-
-                "ultima_execucao":
-                    datetime.now(
-                        timezone.utc
-                    ).isoformat()
-
-            },
-
-            ensure_ascii=False,
-
-            indent=2
-
-        )
-        + "\n",
-
-        encoding="utf-8"
-
-    )
-
-    # ========================================================
-    # VALIDAÇÕES FINAIS
-    # ========================================================
+    # ------------------------------------------------------
+    # VALIDAÇÕES
+    # ------------------------------------------------------
 
     if len(aeroportos) < 7000:
 
@@ -931,9 +1219,22 @@ def main():
             "ERRO CRÍTICO: SBUR não encontrado."
         )
 
-    # ========================================================
+    # ------------------------------------------------------
+    # SALVAR
+    # ------------------------------------------------------
+
+    salvar_json(
+        aeroportos
+    )
+
+    salvar_cursor(
+        proximo_cursor,
+        len(icaos)
+    )
+
+    # ------------------------------------------------------
     # RESULTADO
-    # ========================================================
+    # ------------------------------------------------------
 
     print()
 
@@ -995,10 +1296,6 @@ def main():
     print(
         "========================================"
 
-
-# ============================================================
-# EXECUÇÃO
-# ============================================================
 
 if __name__ == "__main__":
 
