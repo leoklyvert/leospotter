@@ -26,6 +26,31 @@
 
     <title>LeoSpotter</title>
 
+
+    <!-- ==========================================
+         GOOGLE ANALYTICS 4
+         ========================================== -->
+
+    <script
+        async
+        src="https://www.googletagmanager.com/gtag/js?id=G-H67RRRLSDS"
+    ></script>
+
+    <script>
+
+        window.dataLayer = window.dataLayer || [];
+
+        function gtag() {
+            dataLayer.push(arguments);
+        }
+
+        gtag('js', new Date());
+
+        gtag('config', 'G-H67RRRLSDS');
+
+    </script>
+
+
     <link
         rel="stylesheet"
         href="style.css"
@@ -44,8 +69,6 @@
     <header class="topo">
 
         <div class="logo-area">
-
-            <!-- LOGO CLICÁVEL -->
 
             <a
                 href="#inicio"
@@ -124,8 +147,6 @@
             </div>
 
 
-            <!-- PREVISÕES DE AERÓDROMOS -->
-
             <datalist id="listaAerodromos">
 
                 <option value="SBUR">
@@ -156,9 +177,6 @@
             id="resultadoAerodromo"
             class="resultado hidden"
         >
-
-
-            <!-- CABEÇALHO DO RESULTADO -->
 
             <div class="resultado-header">
 
@@ -455,9 +473,6 @@
             class="resultado hidden"
         >
 
-
-            <!-- CABEÇALHO -->
-
             <div class="resultado-header">
 
                 <div>
@@ -487,9 +502,7 @@
 
 
 
-            <!-- ==========================================
-                 DADOS DA AERONAVE
-                 ========================================== -->
+            <!-- DADOS DA AERONAVE -->
 
             <div class="dados-aeronave">
 
@@ -646,9 +659,7 @@
 
 
 
-                <!-- ==========================================
-                     FORMULÁRIO DE FOTO
-                     ========================================== -->
+                <!-- FORMULÁRIO DE FOTO -->
 
                 <div
                     id="formularioFoto"
@@ -1035,22 +1046,37 @@
          ========================================== -->
 
     <script src="app.js"></script>
+
     <script>
-if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js")
-            .then(() => {
-                console.log("LeoSpotter: Service Worker registrado.");
-            })
-            .catch(erro => {
-                console.error(
-                    "LeoSpotter: erro ao registrar Service Worker:",
-                    erro
-                );
+
+        if ("serviceWorker" in navigator) {
+
+            window.addEventListener("load", () => {
+
+                navigator.serviceWorker.register("./service-worker.js")
+
+                    .then(() => {
+
+                        console.log(
+                            "LeoSpotter: Service Worker registrado."
+                        );
+
+                    })
+
+                    .catch(erro => {
+
+                        console.error(
+                            "LeoSpotter: erro ao registrar Service Worker:",
+                            erro
+                        );
+
+                    });
+
             });
-    });
-}
-</script>
+
+        }
+
+    </script>
 
 </body>
 
